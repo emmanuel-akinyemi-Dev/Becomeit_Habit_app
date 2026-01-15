@@ -19,4 +19,5 @@ export interface Habit {
   schedule: HabitSchedule;
   createdAt: number;
   completedDates: string[];
+  tone?: string; 
 }
