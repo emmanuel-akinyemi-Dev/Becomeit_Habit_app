@@ -1,98 +1,106 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// app/index.tsx
+import { useEffect } from "react";
+import { FlatList, Pressable, Text, View, Alert } from "react-native";
+import { useHabitStore } from "@/store/habitStore";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { habits, loading, loadHabits, toggleHabitToday, deleteHabit } = useHabitStore();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    loadHabits();
+  }, []);
+
+  const handleDelete = (id: string) => {
+    Alert.alert(
+      "Delete Habit",
+      "Are you sure you want to delete this habit?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => deleteHabit(id) },
+      ]
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center" }}>
+        <Text style={{ textAlign: "center" }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, padding: 20 }}>
+      <Text style={{ fontSize: 28, fontWeight: "bold" }}>BecomeIt</Text>
+
+      <FlatList
+        data={habits}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ marginTop: 10 }}
+        ListEmptyComponent={
+          <Text style={{ marginTop: 40, textAlign: "center" }}>No habits yet. Add one.</Text>
+        }
+        renderItem={({ item }) => {
+          const today = new Date().toISOString().split("T")[0];
+          const doneToday = item.completedDates.includes(today);
+          const label = `Every ${item.schedule.interval} ${item.schedule.unit} @ ${item.schedule.startTime}`;
+
+          return (
+            <View
+              style={{
+                padding: 16,
+                borderRadius: 12,
+                backgroundColor: "#f1f1f1",
+                marginBottom: 12,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "600" }}>{item.title}</Text>
+                  <Text style={{ marginTop: 4, fontSize: 12, opacity: 0.6 }}>{label}</Text>
+                </View>
+
+                <Pressable
+                  onPress={() => toggleHabitToday(item.id)}
+                  style={{
+                    height: 28,
+                    width: 28,
+                    borderRadius: 14,
+                    borderWidth: 2,
+                    borderColor: "#111",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: doneToday ? "#4caf50" : "transparent",
+                    marginRight: 12,
+                  }}
+                >
+                  <Text style={{ fontWeight: "bold", color: doneToday ? "#fff" : "#111" }}>
+                    ✓
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => handleDelete(item.id)}
+                  style={{
+                    backgroundColor: "#ff4d4d",
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "bold" }}>Delete</Text>
+                </Pressable>
+              </View>
+            </View>
+          );
+        }}
+      />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
