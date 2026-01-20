@@ -1,11 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { useThemePrimary } from "@/hooks/useThemePrimary";
+import colors from "@/constants/colors";
 
 export default function TabsLayout() {
+  const primary = useThemePrimary();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: primary,       
+        tabBarInactiveTintColor: colors.gray,  
       }}
     >
       <Tabs.Screen
@@ -17,6 +23,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="add"
         options={{

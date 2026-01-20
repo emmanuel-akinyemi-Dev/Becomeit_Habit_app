@@ -154,6 +154,6 @@ export function registerHabitNotificationListener() {
     if (!habitId) return;
 
     console.log("[Notify Fired]", habitId);
-    useHabitStore.getState().markHabitNotified(habitId);
+    useHabitStore.getState().markHabitNotified(habitId as any);
   });
 }

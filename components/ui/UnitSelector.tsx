@@ -1,5 +1,6 @@
-import { Pressable, Text, View } from "react-native";
+import { useThemePrimary } from "@/hooks/useThemePrimary";
 import { RepeatUnit } from "@/models/habit";
+import { Pressable, Text, View } from "react-native";
 
 const UNITS: { label: string; value: RepeatUnit }[] = [
   { label: "Minutes", value: "minutes" },
@@ -14,6 +15,7 @@ export function UnitSelector({
   value: RepeatUnit;
   onChange: (v: RepeatUnit) => void;
 }) {
+  const primary = useThemePrimary();
   return (
     <View style={{ flexDirection: "row", gap: 8 }}>
       {UNITS.map((u) => {
@@ -27,12 +29,10 @@ export function UnitSelector({
               paddingVertical: 8,
               paddingHorizontal: 14,
               borderRadius: 20,
-              backgroundColor: active ? "#4caf50" : "#e0e0e0",
+              backgroundColor: active ? primary : "#e0e0e0",
             }}
           >
-            <Text style={{ color: active ? "#fff" : "#000" }}>
-              {u.label}
-            </Text>
+            <Text style={{ color: active ? "#fff" : "#000" }}>{u.label}</Text>
           </Pressable>
         );
       })}

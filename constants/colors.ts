@@ -1,7 +1,7 @@
 // theme/colors.ts
 const colors = {
   primary: "#0E0E55",
-  secondry: "#c2c2faff",
+  secondary: "#c2c2faff",
   background: "#F9F9FB",
   text: "#1E1E1E",
   success: "#22C55E",
@@ -27,3 +27,5 @@ const colors = {
 };
 
 export default colors;
+
+

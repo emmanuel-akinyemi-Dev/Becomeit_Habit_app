@@ -1,8 +1,11 @@
-import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, Pressable, ScrollView, Switch } from "react-native";
+import colors from "@/constants/colors";
+import { ThemeColorKey, themeColors } from "@/constants/themeColors";
+import { useThemePrimary } from "@/hooks/useThemePrimary";
+import { SilentHours, Tone, useSettingsStore } from "@/store/settingsStore";
 import { Audio } from "expo-av";
 import { useEffect, useRef, useState } from "react";
-import { useSettingsStore, Tone, SilentHours } from "@/store/settingsStore";
+import { Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const TONES: { key: Tone; label: string; sound?: any }[] = [
   { key: "system", label: "System Default" },
@@ -20,10 +23,15 @@ export default function SettingsScreen() {
     silentHours,
     setSilentHours,
   } = useSettingsStore();
+  const primary = useThemePrimary();
+  const { themeColor, setThemeColor } = useSettingsStore();
 
   const [localTone, setLocalTone] = useState<Tone>(tone);
-  const [localNotifications, setLocalNotifications] = useState(notificationsEnabled);
-  const [localSilent, setLocalSilent] = useState<SilentHours | undefined>(silentHours);
+  const [localNotifications, setLocalNotifications] =
+    useState(notificationsEnabled);
+  const [localSilent, setLocalSilent] = useState<SilentHours | undefined>(
+    silentHours,
+  );
 
   const soundRef = useRef<Audio.Sound | null>(null);
 
@@ -71,16 +79,38 @@ export default function SettingsScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 24 }}>
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            color: primary,
+            marginBottom: 24,
+          }}
+        >
           Settings
         </Text>
 
         {/* Notifications */}
         <View style={{ marginBottom: 32 }}>
-          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 12 }}>Notifications</Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: "600",
+              color: primary,
+              marginBottom: 12,
+            }}
+          >
+            Notifications
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <Text>Enable notifications</Text>
             <Switch
               value={localNotifications}
@@ -88,13 +118,68 @@ export default function SettingsScreen() {
                 setLocalNotifications(val);
                 toggleNotifications();
               }}
+              trackColor={{ false: colors.gray, true: primary }}
+              thumbColor={localNotifications ? primary : "#f4f3f4"}
+              ios_backgroundColor={colors.gray}
             />
+          </View>
+        </View>
+        {/* Theme Color */}
+        <View style={{ marginBottom: 32 }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: "600",
+              marginBottom: 12,
+              color: primary,
+            }}
+          >
+            Theme Color
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
+            {(Object.keys(themeColors) as ThemeColorKey[]).map((key) => {
+              const color = themeColors[key];
+              const active = themeColor === key;
+
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => setThemeColor(key)}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: color,
+                    borderWidth: active ? 3 : 1,
+                    borderColor: active ? primary : colors.gray,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  {active && (
+                    <Text style={{ color: colors.white, fontWeight: "bold" }}>
+                      ✓
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
         {/* Alarm Tone */}
         <View style={{ marginBottom: 32 }}>
-          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 12 }}>Alarm / Alert Tone</Text>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: "600",
+              color: primary,
+              marginBottom: 12,
+            }}
+          >
+            Alarm / Alert Tone
+          </Text>
           {TONES.map((t) => (
             <Pressable
               key={t.key}
@@ -102,11 +187,16 @@ export default function SettingsScreen() {
               style={{
                 padding: 14,
                 borderRadius: 10,
-                backgroundColor: localTone === t.key ? "#111" : "#eee",
+                backgroundColor: localTone === t.key ? primary : "#eee",
                 marginBottom: 10,
               }}
             >
-              <Text style={{ color: localTone === t.key ? "#fff" : "#000", fontWeight: "600" }}>
+              <Text
+                style={{
+                  color: localTone === t.key ? "#fff" : "#000",
+                  fontWeight: "600",
+                }}
+              >
                 {t.label}
               </Text>
             </Pressable>
@@ -115,10 +205,31 @@ export default function SettingsScreen() {
 
         {/* Silent Hours */}
         <View style={{ marginBottom: 32 }}>
-          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 12 }}>Silent Hours (optional)</Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: "600",
+              color: primary,
+              marginBottom: 12,
+            }}
+          >
+            Silent Hours (optional)
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <Text>Enable Silent Hours</Text>
-            <Switch value={localSilent?.enabled ?? false} onValueChange={toggleSilent} />
+            <Switch
+              value={localSilent?.enabled ?? false}
+              onValueChange={toggleSilent}
+              trackColor={{ false: colors.gray, true: primary }}
+              thumbColor={localSilent ? primary : "#f4f3f4"}
+              ios_backgroundColor={colors.gray}
+            />
           </View>
 
           {localSilent?.enabled && (
@@ -129,7 +240,12 @@ export default function SettingsScreen() {
                   // Example: open time picker here
                   updateSilentTime("22:00", localSilent.end);
                 }}
-                style={{ padding: 10, backgroundColor: "#eee", marginVertical: 6, borderRadius: 8 }}
+                style={{
+                  padding: 10,
+                  backgroundColor: "#eee",
+                  marginVertical: 6,
+                  borderRadius: 8,
+                }}
               >
                 <Text>{localSilent.start}</Text>
               </Pressable>
@@ -139,7 +255,12 @@ export default function SettingsScreen() {
                 onPress={() => {
                   updateSilentTime(localSilent.start, "07:00");
                 }}
-                style={{ padding: 10, backgroundColor: "#eee", marginVertical: 6, borderRadius: 8 }}
+                style={{
+                  padding: 10,
+                  backgroundColor: "#eee",
+                  marginVertical: 6,
+                  borderRadius: 8,
+                }}
               >
                 <Text>{localSilent.end}</Text>
               </Pressable>
