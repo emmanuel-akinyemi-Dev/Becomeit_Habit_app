@@ -47,6 +47,7 @@ export async function addHabit(
   return updated; // return full updated array for immediate state update
 }
 
+
 export async function deleteHabit(id: string) {
   const habits = await getHabits();
   const updated = habits.filter((h) => h.id !== id);
@@ -74,7 +75,9 @@ export async function toggleHabitToday(id: string) {
   });
 
   await saveHabits(updated);
+  return updated;  
 }
+
 
 export async function clearHabits() {
   await AsyncStorage.removeItem(HABIT_KEY);

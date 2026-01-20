@@ -1,134 +1,151 @@
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState } from "react";
-import { View, Text, Pressable, TextInput, ScrollView, Alert } from "react-native";
-import { Button, YStack } from "tamagui";
-import { useSettingsStore } from "@/store/settingsStore";
-import { clearHabits } from "@/storage/habitStorage";
+import { View, Text, Pressable, ScrollView, Switch } from "react-native";
 import { Audio } from "expo-av";
+import { useEffect, useRef, useState } from "react";
+import { useSettingsStore, Tone, SilentHours } from "@/store/settingsStore";
 
-const availableTones = ["Default", "Chime", "Bell", "Beep"]; // replace with actual files
+const TONES: { key: Tone; label: string; sound?: any }[] = [
+  { key: "system", label: "System Default" },
+  { key: "bell", label: "Bell", sound: require("@/assets/sounds/bell.wav") },
+  { key: "chime", label: "Chime", sound: require("@/assets/sounds/chime.wav") },
+  { key: "beep", label: "Beep", sound: require("@/assets/sounds/beep.wav") },
+];
 
 export default function SettingsScreen() {
-  const { theme, tone, defaultInterval, defaultUnit, setTheme, setTone, setDefaultInterval, setDefaultUnit } =
-    useSettingsStore();
+  const {
+    notificationsEnabled,
+    toggleNotifications,
+    tone,
+    setTone,
+    silentHours,
+    setSilentHours,
+  } = useSettingsStore();
 
-  const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
+  const [localTone, setLocalTone] = useState<Tone>(tone);
+  const [localNotifications, setLocalNotifications] = useState(notificationsEnabled);
+  const [localSilent, setLocalSilent] = useState<SilentHours | undefined>(silentHours);
 
-  const handleClearHabits = () => {
-    Alert.alert(
-      "Confirm",
-      "Are you sure you want to delete all habits?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Yes",
-          style: "destructive",
-          onPress: async () => {
-            await clearHabits();
-            Alert.alert("All habits cleared");
-          },
-        },
-      ]
-    );
-  };
+  const soundRef = useRef<Audio.Sound | null>(null);
 
-  const playTone = async (toneName: string) => {
+  // Play preview sound
+  const playSound = async (soundFile?: any) => {
     try {
-      if (previewSound) {
-        await previewSound.stopAsync();
-        await previewSound.unloadAsync();
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
       }
+      if (!soundFile) return;
 
-      const sound = new Audio.Sound();
-      const uriMap: Record<string, any> = {
-        Default: require("../../assets/tones/default.mp3"),
-        Chime: require("../../assets/tones/chime.mp3"),
-        Bell: require("../../assets/tones/bell.mp3"),
-        Beep: require("../../assets/tones/beep.mp3"),
-      };
-
-      await sound.loadAsync(uriMap[toneName]);
+      const { sound } = await Audio.Sound.createAsync(soundFile);
+      soundRef.current = sound;
       await sound.playAsync();
-      setPreviewSound(sound);
     } catch (e) {
-      console.log("Error playing tone", e);
+      console.log("[Sound] Preview error", e);
     }
   };
+
+  const selectTone = async (tone: Tone, sound?: any) => {
+    setLocalTone(tone);
+    setTone(tone); // persist
+    await playSound(sound);
+  };
+
+  // Toggle silent hours
+  const toggleSilent = (enabled: boolean) => {
+    const updated: SilentHours = { ...localSilent, enabled } as SilentHours;
+    setLocalSilent(updated);
+    setSilentHours(updated);
+  };
+
+  // Update silent start/end
+  const updateSilentTime = (start: string, end: string) => {
+    const updated: SilentHours = { enabled: true, start, end };
+    setLocalSilent(updated);
+    setSilentHours(updated);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) soundRef.current.unloadAsync();
+    };
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <YStack style={{ flex: 1, gap: 16 }}>
+        <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 24 }}>
+          Settings
+        </Text>
 
-          <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 16 }}>Settings</Text>
-
-          {/* Theme toggle */}
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ marginBottom: 8 }}>Theme</Text>
-            <Pressable
-              style={{ padding: 8, backgroundColor: "#eee", borderRadius: 8 }}
-              onPress={() => setTheme(theme === "light" ? "dark" : "light")}
-            >
-              <Text>{theme === "light" ? "Switch to Dark" : "Switch to Light"}</Text>
-            </Pressable>
-          </View>
-
-          {/* Default Interval */}
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ marginBottom: 8 }}>Default Habit Interval</Text>
-            <TextInput
-              value={defaultInterval.toString()}
-              keyboardType="numeric"
-              onChangeText={(val) => {
-                const num = Number(val);
-                if (!isNaN(num) && num > 0) setDefaultInterval(num);
-              }}
-              style={{
-                borderWidth: 1,
-                borderColor: "#ccc",
-                borderRadius: 8,
-                padding: 8,
+        {/* Notifications */}
+        <View style={{ marginBottom: 32 }}>
+          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 12 }}>Notifications</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text>Enable notifications</Text>
+            <Switch
+              value={localNotifications}
+              onValueChange={(val) => {
+                setLocalNotifications(val);
+                toggleNotifications();
               }}
             />
           </View>
+        </View>
 
-          {/* Default Unit */}
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ marginBottom: 8 }}>Default Unit</Text>
-            {["minutes", "hourly", "daily", "weekly", "monthly", "yearly"].map((u) => (
-              <Pressable
-                key={u}
-                onPress={() => setDefaultUnit(u as any)}
-                style={{ padding: 8, backgroundColor: defaultUnit === u ? "#ddd" : "#eee", marginBottom: 4, borderRadius: 8 }}
-              >
-                <Text>{u}</Text>
-              </Pressable>
-            ))}
+        {/* Alarm Tone */}
+        <View style={{ marginBottom: 32 }}>
+          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 12 }}>Alarm / Alert Tone</Text>
+          {TONES.map((t) => (
+            <Pressable
+              key={t.key}
+              onPress={() => selectTone(t.key, t.sound)}
+              style={{
+                padding: 14,
+                borderRadius: 10,
+                backgroundColor: localTone === t.key ? "#111" : "#eee",
+                marginBottom: 10,
+              }}
+            >
+              <Text style={{ color: localTone === t.key ? "#fff" : "#000", fontWeight: "600" }}>
+                {t.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Silent Hours */}
+        <View style={{ marginBottom: 32 }}>
+          <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 12 }}>Silent Hours (optional)</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text>Enable Silent Hours</Text>
+            <Switch value={localSilent?.enabled ?? false} onValueChange={toggleSilent} />
           </View>
 
-          {/* Tone Selector */}
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ marginBottom: 8 }}>Notification Tone</Text>
-            {availableTones.map((t) => (
+          {localSilent?.enabled && (
+            <View style={{ marginTop: 12 }}>
+              <Text>Start (HH:mm)</Text>
               <Pressable
-                key={t}
                 onPress={() => {
-                  setTone(t);
-                  playTone(t);
+                  // Example: open time picker here
+                  updateSilentTime("22:00", localSilent.end);
                 }}
-                style={{ padding: 8, backgroundColor: tone === t ? "#ddd" : "#eee", marginBottom: 4, borderRadius: 8 }}
+                style={{ padding: 10, backgroundColor: "#eee", marginVertical: 6, borderRadius: 8 }}
               >
-                <Text>{t}</Text>
+                <Text>{localSilent.start}</Text>
               </Pressable>
-            ))}
-          </View>
 
-          {/* Clear Habits */}
-          <Button onPress={handleClearHabits} style={{ padding: 16, borderRadius: 8, backgroundColor: "#111" }}>
-            <Text style={{ color: "#fff", fontWeight: "bold", textAlign: "center" }}>Clear All Habits</Text>
-          </Button>
-
-        </YStack>
+              <Text>End (HH:mm)</Text>
+              <Pressable
+                onPress={() => {
+                  updateSilentTime(localSilent.start, "07:00");
+                }}
+                style={{ padding: 10, backgroundColor: "#eee", marginVertical: 6, borderRadius: 8 }}
+              >
+                <Text>{localSilent.end}</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

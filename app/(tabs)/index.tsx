@@ -1,106 +1,139 @@
-// app/index.tsx
-import { useEffect } from "react";
-import { FlatList, Pressable, Text, View, Alert } from "react-native";
+import HabitItem from "@/components/ui/HabitItem"; 
 import { useHabitStore } from "@/store/habitStore";
+import React, { useEffect, useMemo } from "react";
+import { Alert, FlatList, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { XStack, YStack } from "tamagui"; 
 
 export default function HomeScreen() {
-  const { habits, loading, loadHabits, toggleHabitToday, deleteHabit } = useHabitStore();
+ 
+
+  const {
+    habits,
+    loading,
+    loadHabits,
+    toggleHabitInterval, 
+    deleteHabit
+  } = useHabitStore();
+
+ 
 
   useEffect(() => {
     loadHabits();
   }, []);
 
-  const handleDelete = (id: string) => {
+  // ---------------- Metrics ----------------
+  const metrics = useMemo(() => {
+    if (!habits || habits.length === 0) {
+      return { streak: 0, totalCompleted: 0, successRate: 0 };
+    }
+
+    const streaks = habits.map((h) => h.streak ?? 0);
+    const totalCompleted = habits.reduce(
+      (sum, h) => sum + (Array.isArray(h.completedDates) ? h.completedDates.length : 0),
+      0
+    );
+
+    // Success rate = clicks vs expected intervals (approx.)
+    const successRate = Math.round(
+      (habits.filter((h) => Array.isArray(h.completedDates) && h.completedDates.length > 0).length /
+        habits.length) *
+        100
+    );
+
+    return {
+      streak: Math.max(0, ...streaks),
+      totalCompleted,
+      successRate,
+    };
+  }, [habits]);
+
+  // ---------------- Delete confirmation ----------------
+  const handleDeleteConfirm = (id: string) => {
     Alert.alert(
-      "Delete Habit",
-      "Are you sure you want to delete this habit?",
+      "Mastered Habit",
+      "Are you sure you want to mark this habit as mastered? This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteHabit(id) },
+        { text: "Yes", style: "destructive", onPress: () => deleteHabit(id) },
       ]
     );
   };
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center" }}>
-        <Text style={{ textAlign: "center" }}>Loading...</Text>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "#000" }}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, padding: 20 }}>
-      <Text style={{ fontSize: 28, fontWeight: "bold" }}>BecomeIt</Text>
+    <SafeAreaView style={{ flex: 1, width: "100%", padding: 20, backgroundColor: "#fff" }}>
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: "bold",
+          color: "#000",
+          alignSelf: "center",
+        }}
+      >
+        My Habits
+      </Text>
+
+      <XStack gap={12} marginVertical={16} justifyContent="center" width="100%">
+        <YStack
+          width="30%"
+          padding={10}
+          backgroundColor="#000"
+          borderRadius={12}
+          alignItems="center"
+        >
+          <Text style={{ color: "#fff", fontWeight: "bold" }}>Streak</Text>
+          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold" }}>
+            {metrics.streak}
+          </Text>
+        </YStack>
+
+        <YStack
+          padding={10}
+          backgroundColor="#000"
+          borderRadius={12}
+          alignItems="center"
+        >
+          <Text style={{ color: "#fff", fontWeight: "bold" }}>Completed</Text>
+          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold" }}>
+            {metrics.totalCompleted}
+          </Text>
+        </YStack>
+
+        <YStack
+          padding={10}
+          backgroundColor="#000"
+          borderRadius={12}
+          alignItems="center"
+        >
+          <Text style={{ color: "#fff", fontWeight: "bold" }}>Success Rate</Text>
+          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold" }}>
+            {metrics.successRate}%
+          </Text>
+        </YStack>
+      </XStack>
 
       <FlatList
-        data={habits}
+        data={habits || []}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ marginTop: 10 }}
-        ListEmptyComponent={
-          <Text style={{ marginTop: 40, textAlign: "center" }}>No habits yet. Add one.</Text>
+        extraData={habits}
+        renderItem={({ item }) =>
+          item ? (
+            <HabitItem
+              habit={item}
+              toggleHabitInterval={toggleHabitInterval} // <-- updated prop
+              handleDelete={handleDeleteConfirm}
+            />
+          ) : null
         }
-        renderItem={({ item }) => {
-          const today = new Date().toISOString().split("T")[0];
-          const doneToday = item.completedDates.includes(today);
-          const label = `Every ${item.schedule.interval} ${item.schedule.unit} @ ${item.schedule.startTime}`;
-
-          return (
-            <View
-              style={{
-                padding: 16,
-                borderRadius: 12,
-                backgroundColor: "#f1f1f1",
-                marginBottom: 12,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "600" }}>{item.title}</Text>
-                  <Text style={{ marginTop: 4, fontSize: 12, opacity: 0.6 }}>{label}</Text>
-                </View>
-
-                <Pressable
-                  onPress={() => toggleHabitToday(item.id)}
-                  style={{
-                    height: 28,
-                    width: 28,
-                    borderRadius: 14,
-                    borderWidth: 2,
-                    borderColor: "#111",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: doneToday ? "#4caf50" : "transparent",
-                    marginRight: 12,
-                  }}
-                >
-                  <Text style={{ fontWeight: "bold", color: doneToday ? "#fff" : "#111" }}>
-                    ✓
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => handleDelete(item.id)}
-                  style={{
-                    backgroundColor: "#ff4d4d",
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text style={{ color: "#fff", fontWeight: "bold" }}>Delete</Text>
-                </Pressable>
-              </View>
-            </View>
-          );
-        }}
       />
-    </View>
+    </SafeAreaView>
   );
 }

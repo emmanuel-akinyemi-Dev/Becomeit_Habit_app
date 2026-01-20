@@ -1,50 +1,271 @@
-# Welcome to your Expo app 👋
+Absolutely. Below is a **detailed, developer-friendly README** that documents the system *as it currently works*, aligned with your interval-based logic and without inventing features you didn’t build.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+You can copy this directly into `README.md`.
 
-## Get started
+---
 
-1. Install dependencies
+# 🧠 Habit Tracker (Interval-Based)
 
-   ```bash
-   npm install
-   ```
+A React Native habit-tracking app built around **interval-based completion**, not daily checkmarks.
+Habits reset based on their configured schedule (minutes, hours, days, weeks, etc.), and users can only complete a habit **once per interval**.
 
-2. Start the app
+This design encourages **true behavioral consistency** rather than superficial daily streaks.
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## ✨ Core Concepts
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### 1. Interval-Based Habits (Not Daily)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Habits are **not tied to calendar days**.
 
-## Get a fresh project
+Instead, each habit defines:
 
-When you're ready, run:
+* a **repeat unit** (minutes, hourly, daily, weekly, monthly, yearly)
+* an **interval** (every X units)
+* a **start time**
 
-```bash
-npm run reset-project
+A habit can only be completed **once per interval window**.
+
+---
+
+### 2. Button Behavior (Very Important)
+
+The “✓” button:
+
+* ✅ Records **one successful completion for the current interval**
+* 🔒 Disables immediately after press
+* ⏳ Re-enables only when the **next interval begins**
+* ❌ Does NOT reset at midnight unless the habit is daily
+
+This avoids fake progress and enforces real consistency.
+
+---
+
+## 📦 Data Models
+
+### Habit
+
+```ts
+export interface Habit {
+  id: string;
+  title: string;
+  habitType?: "ONE_TIME" | "REPEATING" | "SCHEDULED";
+  schedule: {
+    unit: RepeatUnit;
+    interval: number;
+    startTime: string; // "HH:mm"
+  };
+  createdAt: number;
+  completedDates: string[]; // ISO timestamps
+  streak?: number;
+  tone?: string;
+  icon?: string;
+  category?: "Health" | "Productivity" | "Learning" | "Mindfulness" | "Social" | "Other";
+}
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Key Design Decision
 
-## Learn more
+`completedDates` stores **full ISO timestamps**, not dates:
 
-To learn more about developing your project with Expo, look at the following resources:
+```ts
+"2026-01-17T11:53:36.402Z"
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+This is required to:
 
-## Join the community
+* detect interval boundaries
+* disable buttons correctly
+* calculate accurate success rates
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 🔁 Habit Lifecycle
+
+### 1. Creation
+
+When a habit is created:
+
+* `completedDates` starts empty
+* schedule defines the interval logic
+* notifications are scheduled from `startTime`
+
+---
+
+### 2. Completion (Button Press)
+
+When the user presses the habit button:
+
+1. The app checks if the habit is **currently active**
+2. If active:
+
+   * current timestamp is added to `completedDates`
+   * notifications are rescheduled
+3. The button becomes disabled until the next interval
+
+This is handled by:
+
+```ts
+toggleHabitInterval(habitId)
+```
+
+---
+
+### 3. Interval Locking Logic
+
+A habit is considered **locked** if the user already completed it within the current interval window.
+
+This is calculated using:
+
+* last completion timestamp
+* habit interval + unit
+* current time
+
+If `now < nextActivation`, the button stays disabled.
+
+---
+
+## ⏱ Scheduling & Timing
+
+### getNextActivation(habit)
+
+Calculates when the habit becomes active again based on:
+
+* last completion time
+* interval
+* repeat unit
+
+Used for:
+
+* button enabling/disabling
+* countdown display
+* notification rescheduling
+
+---
+
+### Countdown Display
+
+The UI shows a live countdown such as:
+
+* `Next: 3h 20m`
+* `Next: 2 days`
+* `Now`
+
+Updated every second via `setInterval`.
+
+---
+
+## 📊 Metrics Explained
+
+### 1. Completed
+
+Total number of interval successes across all habits:
+
+```ts
+completedDates.length
+```
+
+---
+
+### 2. Streak (Current Logic)
+
+* Represents the **highest streak among all habits**
+* Incremented only when interval completions are valid
+* Dates must be unique per interval window
+
+> ⚠️ Streak logic is interval-aware, not daily.
+
+---
+
+### 3. Success Rate (Current Logic)
+
+Currently calculated as:
+
+```
+habits with ≥1 completion / total habits
+```
+
+This will later evolve into:
+
+```
+completedIntervals / expectedIntervals
+```
+
+…but is intentionally kept simple for now to avoid false precision.
+
+---
+
+## 🔔 Notifications
+
+* Notifications are scheduled based on the habit’s interval
+* When a habit is completed:
+
+  * its existing notification is canceled
+  * a new one is scheduled for the next interval
+* Ensures no duplicate or stale reminders
+
+---
+
+## 🗂 Storage
+
+* All habits are persisted using `AsyncStorage`
+* Stored under a single key
+* State is restored on app launch
+
+---
+
+## 🧪 Debugging & Logging
+
+Key logs you may see:
+
+```txt
+Habit: Make salad
+Now: 2026-01-17T11:53:36.402Z
+Next Activation: 2026-01-18T11:53:36.402Z
+Completed Dates: ["2026-01-17T11:53:36.402Z"]
+Button Active? false
+```
+
+These logs help confirm:
+
+* correct interval detection
+* correct locking behavior
+* correct scheduling
+
+---
+
+## 🚫 Known Non-Goals (By Design)
+
+This app intentionally does NOT:
+
+* auto-complete habits
+* reset habits daily unless configured
+* inflate streaks via multiple taps
+* assume habits are daily
+
+---
+
+## 🧭 Mental Model (TL;DR)
+
+> A habit is a **contract with time**, not with dates.
+
+If the user:
+
+* completes the habit → success is recorded
+* tries again too early → button is disabled
+* waits until next interval → button reactivates
+
+Simple. Honest. Hard to cheat.
+
+---
+
+## 🛠 Future Improvements
+
+* True interval-based success rate
+* Visual interval timeline
+* Missed-interval detection
+* Per-habit streaks
+* Analytics view
+
+---

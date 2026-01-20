@@ -1,21 +1,49 @@
-// tamagui.config.ts
-import { createTamagui } from 'tamagui' 
-import { themes ,tokens} from '@tamagui/themes'
+import { themes, tokens } from "@tamagui/themes";
+import { createTamagui } from "tamagui";
+import colors from "./constants/colors";
 
-export const config = createTamagui({
-  tokens,
+const appTokens = {
+  color: {
+    primary: colors.primary,
+    secondary: colors.secondry,
+    background: colors.background,
+    text: colors.text,
+    success: colors.success,
+    warning: colors.warning,
+    danger: colors.danger,
+  },
+};
+
+const appThemes = {
+  light: {
+    background: colors.background,
+    color: colors.text,
+    primary: colors.primary,
+    secondary: colors.secondry,
+  },
+  dark: {
+    background: colors.primary,
+    color: colors.white,
+    primary: colors.secondry,
+    secondary: "#B3B3FF",
+  },
+};
+
+const config = createTamagui({
+  tokens: {
+    ...tokens,
+    ...appTokens,
+  },
   themes: {
-    light: themes.light,
-    dark: themes.dark,
+    ...themes,
+    ...appThemes,
   },
-  media: {
-    // optional media queries
-    // sm: '(max-width: 640px)',
-    // md: '(max-width: 768px)',
-    // lg: '(max-width: 1024px)',
-  },
-  // animations: {},
-})
+});
 
-export type AppTheme = typeof themes
+export type AppConfig = typeof config;
 
+declare module "tamagui" {
+  interface TamaguiCustomConfig extends AppConfig {}
+}
+
+export default config;
