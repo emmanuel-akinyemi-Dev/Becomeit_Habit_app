@@ -1,12 +1,19 @@
 import { UnitSelector } from "@/components/ui/UnitSelector";
 import colors from "@/constants/colors";
+import { HABIT_TEMPLATES } from "@/constants/habittemplate";
 import { useThemePrimary } from "@/hooks/useThemePrimary";
 import { HabitSchedule, HabitType, RepeatUnit } from "@/models/habit";
 import { useHabitStore } from "@/store/habitStore";
+import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XStack } from "tamagui";
 
@@ -14,6 +21,7 @@ export default function AddHabitScreen() {
   const { addHabit } = useHabitStore();
 
   const [title, setTitle] = useState("");
+  const [icon, setIcon] = useState("");
   const [habitType, setHabitType] = useState<HabitType>("REPEATING");
   const [mode, setMode] = useState<"startNow" | "scheduleStart">("startNow");
   const [frequency, setFrequency] = useState<RepeatUnit>("minutes");
@@ -26,6 +34,12 @@ export default function AddHabitScreen() {
   const [time, setTime] = useState(new Date());
   const [tempTime, setTempTime] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
+
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   const handleSave = async () => {
     const interval =
@@ -55,6 +69,15 @@ export default function AddHabitScreen() {
     }
   };
 
+  const ICONS = [
+    "checkmark-circle",
+    "water-outline",
+    "book-outline",
+    "walk-outline",
+    "heart-outline",
+    "fitness-outline",
+  ];
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1, padding: 20 }}>
@@ -62,13 +85,44 @@ export default function AddHabitScreen() {
           Add Habit
         </Text>
 
+        {/* Templates */}
+        <Text style={{ fontWeight: "600", marginBottom: 8, color: primary }}>
+          Quick templates
+        </Text>
+
+        <XStack gap={10} marginBottom={20}>
+          {HABIT_TEMPLATES.map((tpl: any) => (
+            <Pressable
+              key={tpl.id}
+              onPress={() => {
+                setTitle(tpl.title);
+                setFrequency(tpl.unit);
+                setIntervalChoice(tpl.interval);
+                setHabitType(tpl.habitType);
+              }}
+              style={{
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: colors.white,
+                alignItems: "center",
+                shadowColor: primary,
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+              }}
+            >
+              <Ionicons name={tpl.icon as any} size={20} color={primary} />
+              <Text style={{ fontSize: 12, marginTop: 4 }}>{tpl.title}</Text>
+            </Pressable>
+          ))}
+        </XStack>
+
         <TextInput
           placeholder="Habit title"
           placeholderTextColor={colors.placeholderText}
           value={title}
           onChangeText={setTitle}
           style={{
-            marginTop: 20,
+            marginTop: 10,
             fontSize: 16,
             padding: 14,
             borderRadius: 12,
@@ -141,9 +195,37 @@ export default function AddHabitScreen() {
             )}
           </View>
         )}
+        <Text style={{ fontWeight: "600", marginBottom: 8, color: primary }}>
+          Icon
+        </Text>
+
+        <XStack gap={12} marginBottom={20}>
+          {ICONS.map((ic) => (
+            <Pressable
+              key={ic}
+              onPress={() => setIcon(ic)}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: icon === ic ? primary : colors.border,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons
+                name={ic as any}
+                size={22}
+                color={icon === ic ? colors.white : colors.gray}
+              />
+            </Pressable>
+          ))}
+        </XStack>
 
         {/* Frequency */}
-        <Text style={{ fontWeight: "600", color: colors.black, marginBottom:10 }}>
+        <Text
+          style={{ fontWeight: "600", color: colors.black, marginBottom: 10 }}
+        >
           Frequency
         </Text>
         <UnitSelector value={frequency} onChange={setFrequency} />
@@ -198,21 +280,27 @@ export default function AddHabitScreen() {
           />
         )}
 
-        <Pressable
-          onPress={handleSave}
-          disabled={title.length < 1}
-          style={{
-            marginTop: 30,
-            paddingVertical: 16,
-            borderRadius: 14,
-            backgroundColor: primary,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: colors.white, fontWeight: "700" }}>
-            Save Habit
-          </Text>
-        </Pressable>
+        <Animated.View style={animatedStyle}>
+          <Pressable
+            onPressIn={() => (scale.value = withSpring(0.96))}
+            disabled={title.length < 1}
+            onPressOut={() => (scale.value = withSpring(1))}
+            onPress={handleSave}
+            style={{
+              marginTop:30,
+              paddingVertical: 16,
+              borderRadius: 14,
+              backgroundColor: primary,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{ color: colors.white, fontWeight: "700", fontSize: 16 }}
+            >
+              Save Habit
+            </Text>
+          </Pressable>
+        </Animated.View>
       </View>
     </SafeAreaView>
   );

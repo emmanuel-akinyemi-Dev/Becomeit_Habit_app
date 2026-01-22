@@ -7,6 +7,7 @@ import React, { useEffect, useMemo } from "react";
 import { Alert, FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XStack, YStack } from "tamagui";
+import { AFFIRMATIONS } from "@/constants/afirmations";
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -183,6 +184,25 @@ export default function HomeScreen() {
           </Text>
         </YStack>
       </XStack>
+
+      <View
+        style={{
+          padding: 16,
+          borderRadius: 16,
+          backgroundColor: colors.white,
+          marginBottom: 16,
+          shadowColor: primary,
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
+        }}
+      >
+        <Text style={{ color: primary, fontWeight: "600", marginBottom: 6 }}>
+          Affirmation
+        </Text>
+        <Text style={{ color: colors.text, fontSize: 14 }}>
+          {AFFIRMATIONS[new Date().getHours() % AFFIRMATIONS.length]}
+        </Text>
+      </View>
 
       {/* ---------- Habit List ---------- */}
       <FlatList

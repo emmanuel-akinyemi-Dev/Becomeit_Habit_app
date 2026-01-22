@@ -1,0 +1,23 @@
+export const AFFIRMATIONS = [
+  "I am doing better than i think. ill keep going",
+  "Baby steps still move me forward.",
+  "Consistency beats motivation. I will be consistent",
+  "I showed up. That matters.",
+  "Ill Progress, not perfection.",
+  "I am allowed to go at my our own pace.",
+  "My effort today counts.",
+  "Good things are contiously happening for me",
+  "Discipline is a form of self-respect. I will be Disciplined",
+  "I will not chase, I will attract instead",
+  "What is meant for me will always find me",
+  "I have everything i need, whenever i need it",
+  "The universe is working in my favour",
+  "Good things are contiously happening to me",
+  "I love me, No one can love me like i do.",
+  "Time does not have countrol over my Thought",
+  "If the mountain is too high, I will go arround it",
+  "I am a money magnet, I make money easily",
+  "My existence is not by mistake.",
+  "Life may be meaningless, but ill give it meaning",
+  "My name will never be forgotten"
+];
