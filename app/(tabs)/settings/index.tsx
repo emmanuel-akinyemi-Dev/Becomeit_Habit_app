@@ -1,7 +1,10 @@
 import colors from "@/constants/colors";
 import { ThemeColorKey, themeColors } from "@/constants/themeColors";
+import { openFeatureSuggestion } from "@/helpers/openFeatureSuggetion";
 import { useThemePrimary } from "@/hooks/useThemePrimary";
+import { buyRemoveAds, restorePurchases } from "@/iap/iapService";
 import { scheduleAffirmations } from "@/notifications/afirmationSchedular";
+import { useEntitlementStore } from "@/store/entitlementStore";
 import { SilentHours, Tone, useSettingsStore } from "@/store/settingsStore";
 import { Audio } from "expo-av";
 import * as Notifications from "expo-notifications";
@@ -9,8 +12,6 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XStack } from "tamagui";
-import { openFeatureSuggestion } from "@/helpers/openFeatureSuggetion";
-
 
 const TONES: { key: Tone; label: string; sound?: any }[] = [
   { key: "system", label: "System Default" },
@@ -21,7 +22,7 @@ const TONES: { key: Tone; label: string; sound?: any }[] = [
 
 export default function SettingsScreen() {
   const primary = useThemePrimary();
-
+  const { adFree } = useEntitlementStore();
   const {
     notificationsEnabled,
     hourlyAffirmationsEnabled,
@@ -259,6 +260,32 @@ export default function SettingsScreen() {
             </View>
           )}
         </Section>
+
+        <View style={{ marginBottom: 32 }}>
+          <Text style={{ fontSize: 16, fontWeight: "600", color: primary }}>
+            Upgrade Plan
+          </Text>
+
+          {adFree ? (
+            <Text style={{ color: colors.success, marginTop: 8 }}>
+              You are ad-free 🎉
+            </Text>
+          ) : (
+            <>
+              <Pressable onPress={buyRemoveAds}>
+                <Text style={{ color: primary, fontWeight: "600" }}>
+                  Remove Ads (One-time purchase)
+                </Text>
+              </Pressable>
+
+              <Pressable onPress={restorePurchases}>
+                <Text style={{ marginTop: 8, color: colors.gray }}>
+                  Restore Purchase
+                </Text>
+              </Pressable>
+            </>
+          )}
+        </View>
 
         {/* Suggest a Feature */}
         <View style={{ marginBottom: 32 }}>

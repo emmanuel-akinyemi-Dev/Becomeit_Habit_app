@@ -5,7 +5,7 @@ import colors from "./constants/colors";
 const appTokens = {
   color: {
     primary: colors.primary,
-    secondary: colors.secondry,
+    secondary: colors.secondary,
     background: colors.background,
     text: colors.text,
     success: colors.success,
@@ -19,12 +19,12 @@ const appThemes = {
     background: colors.background,
     color: colors.text,
     primary: colors.primary,
-    secondary: colors.secondry,
+    secondary: colors.secondary,
   },
   dark: {
     background: colors.primary,
     color: colors.white,
-    primary: colors.secondry,
+    primary: colors.secondary,
     secondary: "#B3B3FF",
   },
 };
