@@ -2,7 +2,6 @@ import colors from "@/constants/colors";
 import { ThemeColorKey, themeColors } from "@/constants/themeColors";
 import { openFeatureSuggestion } from "@/helpers/openFeatureSuggetion";
 import { useThemePrimary } from "@/hooks/useThemePrimary";
-import { buyRemoveAds, restorePurchases } from "@/iap/iapService";
 import { scheduleAffirmations } from "@/notifications/afirmationSchedular";
 import { useEntitlementStore } from "@/store/entitlementStore";
 import { SilentHours, Tone, useSettingsStore } from "@/store/settingsStore";
@@ -272,13 +271,13 @@ export default function SettingsScreen() {
             </Text>
           ) : (
             <>
-              <Pressable onPress={buyRemoveAds}>
+              <Pressable onPress={()=>{}}>
                 <Text style={{ color: primary, fontWeight: "600" }}>
                   Remove Ads (One-time purchase)
                 </Text>
               </Pressable>
 
-              <Pressable onPress={restorePurchases}>
+              <Pressable onPress={()=>{}}>
                 <Text style={{ marginTop: 8, color: colors.gray }}>
                   Restore Purchase
                 </Text>

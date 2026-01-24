@@ -77,7 +77,7 @@ export default function HomeScreen() {
             fontWeight: "600",
           }}
         >
-          No reminder yet
+          No reminder yet, goto add tab to create one
         </Text>
       </View>
     );

@@ -42,7 +42,7 @@ export default function TabsLayout() {
             <Ionicons name="settings" size={size} color={color} />
           ),
         }}
-      />
+      /> 
     </Tabs>
   );
 }

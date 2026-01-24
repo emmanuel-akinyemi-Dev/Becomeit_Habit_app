@@ -1,38 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
 import { useThemePrimary } from "@/hooks/useThemePrimary";
-import colors from "@/constants/colors";
+import { Stack } from "expo-router";
 
-export default function TabsLayout() {
-  const primary = useThemePrimary();
+export default function SetingsLayout() {
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: primary,       
-        tabBarInactiveTintColor: colors.gray,  
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="settings" size={size} color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="upgrade"
-        options={{
-          title: "Upgrade",
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="add-circle" size={size} color={color} />
-          ),
-        }}
-      /> 
-    </Tabs>
-  );
-}
+    <Stack>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="upgrade" options={{ headerShown: false }} />
+    </Stack>
+  )}
