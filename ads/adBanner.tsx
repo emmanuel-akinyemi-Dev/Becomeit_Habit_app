@@ -8,7 +8,7 @@ import { canShowAds } from "./adService";
 
 const adUnitId = __DEV__
   ? TestIds.BANNER
-  : "ca-app-pub-xxxxxxxx/xxxxxxxx";
+  : "ca-app-pub-3940256099942544~3347511713";
 
 export default function AdBanner() {
   if (!canShowAds()) return null;

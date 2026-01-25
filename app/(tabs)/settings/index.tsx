@@ -300,7 +300,7 @@ export default function SettingsScreen() {
           </Text>
 
           <Pressable
-            onPress={openFeatureSuggestion}
+            onPress={()=>{}}
             style={{
               paddingVertical: 14,
               paddingHorizontal: 16,
