@@ -4,10 +4,12 @@ import { Habit } from "@/models/habit";
  * Returns an array of booleans representing
  * completed days from Monday → Sunday
  */
-export function getWeeklyCompletion(habits: Habit[]): boolean[] {
-  if (!habits || habits.length === 0) {
-    return Array(7).fill(false);
-  }
+/**
+ * Returns an array of booleans representing completed days from Monday → Sunday
+ * Accepts either Habit[] (legacy) or completionDates string[]
+ */
+export function getWeeklyCompletion(input: Habit[] | string[]): boolean[] {
+  if (!input || input.length === 0) return Array(7).fill(false);
 
   const today = new Date();
 
@@ -18,17 +20,30 @@ export function getWeeklyCompletion(habits: Habit[]): boolean[] {
 
   const completedDays = new Set<number>();
 
-  habits.forEach((habit) => {
-    if (!Array.isArray(habit.completedDates)) return;
-
-    habit.completedDates.forEach((dateStr) => {
+  if (typeof input[0] === "string") {
+    // input is string[] (completionDates)
+    (input as string[]).forEach((dateStr) => {
       const d = new Date(dateStr);
       if (d >= startOfWeek && d <= today) {
         const weekdayIndex = (d.getDay() + 6) % 7; // Mon = 0 ... Sun = 6
         completedDays.add(weekdayIndex);
       }
     });
-  });
+  } else {
+    // input is Habit[]
+    (input as Habit[]).forEach((habit) => {
+      if (!Array.isArray(habit.completedDates)) return;
+      habit.completedDates.forEach((dateStr) => {
+        const d = new Date(dateStr);
+        if (d >= startOfWeek && d <= today) {
+          const weekdayIndex = (d.getDay() + 6) % 7;
+          completedDays.add(weekdayIndex);
+        }
+      });
+    });
+  }
 
   return Array.from({ length: 7 }, (_, i) => completedDays.has(i));
 }
+
+

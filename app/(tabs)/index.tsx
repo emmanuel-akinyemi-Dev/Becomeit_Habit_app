@@ -1,4 +1,5 @@
 import HabitItem from "@/components/ui/HabitItem";
+import { AFFIRMATIONS } from "@/constants/afirmations";
 import colors from "@/constants/colors";
 import { getWeeklyCompletion } from "@/helpers/streakHelpers";
 import { useThemePrimary } from "@/hooks/useThemePrimary";
@@ -7,46 +8,46 @@ import React, { useEffect, useMemo } from "react";
 import { Alert, FlatList, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XStack, YStack } from "tamagui";
-import { AFFIRMATIONS } from "@/constants/afirmations";
+import MetricsCarousel from "@/components/ui/MetricsCarousel";
+
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function HomeScreen() {
-  const { habits, loading, loadHabits, toggleHabitInterval, deleteHabit } =
-    useHabitStore();
+  const {
+    habits,
+    stats,
+    loading,
+    loadHabits,
+    loadStats,
+    toggleHabitInterval,
+    deleteHabit,
+  } = useHabitStore();
 
+  const primary = useThemePrimary();
+
+  // ---------------- Load data on mount ----------------
   useEffect(() => {
     loadHabits();
+    loadStats();
   }, []);
-  const primary = useThemePrimary();
-  // ---------------- Weekly streak (logic extracted) ----------------
+
+  // ---------------- Weekly streak (from stats) ----------------
   const weekProgress = useMemo(
-    () => getWeeklyCompletion(habits || []),
-    [habits],
+    () => getWeeklyCompletion(stats?.completionDates || []),
+    [stats],
   );
 
-  // ---------------- Metrics ----------------
+  // ---------------- Metrics (from stats) ----------------
   const metrics = useMemo(() => {
-    if (!habits || habits.length === 0) {
-      return { totalCompleted: 0, successRate: 0 };
-    }
+    if (!stats) return { totalCompleted: 0, successRate: 0 };
 
-    const totalCompleted = habits.reduce(
-      (sum, h) =>
-        sum + (Array.isArray(h.completedDates) ? h.completedDates.length : 0),
-      0,
-    );
-
-    const successRate = Math.round(
-      (habits.filter(
-        (h) => Array.isArray(h.completedDates) && h.completedDates.length > 0,
-      ).length /
-        habits.length) *
-        100,
-    );
+    const totalCompleted = stats.totalCompletions;
+    const totalOpportunities = stats.totalOpportunities || 1; // avoid divide by zero
+    const successRate = Math.round((totalCompleted / totalOpportunities) * 100);
 
     return { totalCompleted, successRate };
-  }, [habits]);
+  }, [stats]);
 
   // ---------------- Delete confirmation ----------------
   const handleDeleteConfirm = (id: string) => {
@@ -64,21 +65,6 @@ export default function HomeScreen() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <Text style={{ color: colors.text }}>Loading...</Text>
-      </View>
-    );
-  }
-  if (!habits || habits.length === 0) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text
-          style={{
-            color: colors.gray,
-            fontSize: 16,
-            fontWeight: "600",
-          }}
-        >
-          No reminder yet, goto add tab to create one
-        </Text>
       </View>
     );
   }
@@ -140,6 +126,9 @@ export default function HomeScreen() {
         })}
       </XStack>
 
+    <MetricsCarousel completionDates={stats.completionDates} />
+
+
       {/* ---------- Metrics ---------- */}
       <XStack gap={12} marginBottom={16}>
         <YStack
@@ -185,6 +174,7 @@ export default function HomeScreen() {
         </YStack>
       </XStack>
 
+      {/* ---------- Affirmation ---------- */}
       <View
         style={{
           padding: 16,
@@ -205,20 +195,36 @@ export default function HomeScreen() {
       </View>
 
       {/* ---------- Habit List ---------- */}
-      <FlatList
-        data={habits || []}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) =>
-          item ? (
-            <HabitItem
-              habit={item}
-              toggleHabitInterval={toggleHabitInterval}
-              handleDelete={handleDeleteConfirm}
-            />
-          ) : null
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      {!habits || habits.length === 0 ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text
+            style={{
+              color: colors.gray,
+              fontSize: 16,
+              fontWeight: "600",
+            }}
+          >
+            No reminder yet, go to add tab to create one
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={habits || []}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) =>
+            item ? (
+              <HabitItem
+                habit={item}
+                toggleHabitInterval={toggleHabitInterval}
+                handleDelete={handleDeleteConfirm}
+              />
+            ) : null
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 }

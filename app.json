@@ -1,32 +1,26 @@
 {
   "expo": {
-    "name": "becomit",
-    "slug": "becomit",
+    "name": "TuskIN",
+    "slug": "tuskin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "becomit",
+    "scheme": "trunkin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~1458002511"
-      }
+      "supportsTablet": true
     },
     "android": {
+      "package": "com.surro.trunkin", 
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#E6F4FE",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.surro.becomit",
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~3347511713"
-      }
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
@@ -55,7 +49,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "fb251e0a-65ee-4624-8124-0dd07af794b5"
+        "projectId": "4b9405f9-afdd-4f13-9d3b-3c020373f8d2"
       }
     },
     "owner": "prumusprime"

@@ -36,4 +36,9 @@ export interface Habit {
     | "Other";
 }
 
- 
+ export interface HabitStats {
+  totalCompletions: number;
+  totalOpportunities: number;
+  completionDates: string[]; // ISO dates
+}
+

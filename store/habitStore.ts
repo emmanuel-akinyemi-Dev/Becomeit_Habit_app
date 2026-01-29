@@ -1,25 +1,33 @@
 import { cancelHabitNotification, scheduleHabitNotification } from "@/notifications/scheduler";
-import { getHabits, saveHabits } from "@/storage/habitStorage";
+import { getHabits, HabitStats, getHabitStats, saveHabits, saveHabitStats } from "@/storage/habitStorage";
 import { create } from "zustand";
-import { Habit, HabitType, HabitSchedule } from "../models/habit";
+import { Habit, HabitSchedule, HabitType } from "../models/habit";
 
 interface HabitState {
   habits: Habit[];
+  stats: HabitStats;
   loading: boolean;
   loadHabits: () => Promise<void>;
+  loadStats: () => Promise<void>;
   addHabit: (habitData: Omit<Habit, "id" | "createdAt" | "completedDates" | "streak">) => Promise<Habit>;
   deleteHabit: (id: string) => Promise<void>;
   toggleHabitToday: (id: string) => Promise<void>;
   toggleHabitInterval: (id: string) => Promise<void>;
   toggleDone: (id: string) => Promise<void>;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
-  markHabitNotified: (id: string) => void;
+  markHabitNotified: (id: string) => Promise<void>;
 }
 
 export const useHabitStore = create<HabitState>((set, get) => ({
   habits: [],
+  stats: {
+    totalCompletions: 0,
+    totalOpportunities: 0,
+    completionDates: [],
+  },
   loading: true,
 
+  // ---------------- Load ----------------
   loadHabits: async () => {
     const data = await getHabits();
     const normalized: Habit[] = (data ?? []).map((h) => ({
@@ -30,6 +38,12 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     set({ habits: normalized, loading: false });
   },
 
+  loadStats: async () => {
+    const stats = await getHabitStats();
+    set({ stats });
+  },
+
+  // ---------------- Add / Update ----------------
   addHabit: async (habitData) => {
     const newHabit: Habit = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
@@ -58,18 +72,30 @@ export const useHabitStore = create<HabitState>((set, get) => ({
 
   updateHabit: (id, updates) => {
     const updatedHabits = get().habits.map((habit) =>
-      habit.id === id ? { ...habit, ...updates } : habit
+      habit.id === id ? { ...habit, ...updates } : habit,
     );
     set({ habits: updatedHabits });
     saveHabits(updatedHabits);
   },
 
-  markHabitNotified: (id) => {
+  // ---------------- Notifications ----------------
+  markHabitNotified: async (id) => {
     const now = new Date().toISOString();
     get().updateHabit(id, { lastNotifiedAt: now });
+
+    const stats = get().stats;
+    const updatedStats: HabitStats = {
+      ...stats,
+      totalOpportunities: stats.totalOpportunities + 1,
+    };
+
+    set({ stats: updatedStats });
+    await saveHabitStats(updatedStats);
+
     console.log("[Notify] Habit activated:", id, now);
   },
 
+  // ---------------- Delete ----------------
   deleteHabit: async (id) => {
     await cancelHabitNotification(id);
     const updatedHabits = get().habits.filter((h) => h.id !== id);
@@ -77,11 +103,17 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     await saveHabits(updatedHabits);
   },
 
+  // ---------------- Toggle Today ----------------
   toggleHabitToday: async (id) => {
     const today = new Date().toISOString().split("T")[0];
+
+    let completedToday = false;
+
     const updatedHabits = get().habits.map((habit) => {
       if (habit.id !== id) return habit;
       if (habit.completedDates.includes(today)) return habit;
+
+      completedToday = true;
 
       const streak = habit.lastStreakDate === today ? habit.streak : (habit.streak ?? 0) + 1;
 
@@ -92,16 +124,35 @@ export const useHabitStore = create<HabitState>((set, get) => ({
         lastStreakDate: today,
       };
 
-      cancelHabitNotification(habit.id).then(() => scheduleHabitNotification(updatedHabit));
+      cancelHabitNotification(habit.id).then(() =>
+        scheduleHabitNotification(updatedHabit),
+      );
+
       return updatedHabit;
     });
 
     set({ habits: updatedHabits });
     await saveHabits(updatedHabits);
+
+    if (completedToday) {
+      const stats = get().stats;
+      const updatedStats: HabitStats = {
+        ...stats,
+        totalCompletions: stats.totalCompletions + 1,
+        completionDates: [...stats.completionDates, today],
+      };
+      set({ stats: updatedStats });
+      await saveHabitStats(updatedStats);
+    }
   },
 
+  // ---------------- Toggle Interval ----------------
   toggleHabitInterval: async (id) => {
     const now = new Date();
+    const today = now.toISOString().split("T")[0];
+
+    let completedNow = false;
+
     const updatedHabits = get().habits.map((habit) => {
       if (habit.id !== id) return habit;
       if (!habit.lastNotifiedAt) return habit;
@@ -110,9 +161,10 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       const lastCompleted = habit.lastCompletedAt ? new Date(habit.lastCompletedAt) : null;
       if (lastCompleted && lastCompleted >= notifiedAt) return habit;
 
-      const today = now.toDateString();
       const lastStreakDay = habit.lastCompletedAt ? new Date(habit.lastCompletedAt).toDateString() : null;
-      const incrementStreak = today !== lastStreakDay;
+      const incrementStreak = now.toDateString() !== lastStreakDay;
+
+      completedNow = true;
 
       const updatedHabit: Habit = {
         ...habit,
@@ -121,14 +173,29 @@ export const useHabitStore = create<HabitState>((set, get) => ({
         streak: incrementStreak ? (habit.streak ?? 0) + 1 : habit.streak,
       };
 
-      cancelHabitNotification(habit.id).then(() => scheduleHabitNotification(updatedHabit));
+      cancelHabitNotification(habit.id).then(() =>
+        scheduleHabitNotification(updatedHabit),
+      );
+
       return updatedHabit;
     });
 
     set({ habits: updatedHabits });
     await saveHabits(updatedHabits);
+
+    if (completedNow) {
+      const stats = get().stats;
+      const updatedStats: HabitStats = {
+        ...stats,
+        totalCompletions: stats.totalCompletions + 1,
+        completionDates: [...stats.completionDates, today],
+      };
+      set({ stats: updatedStats });
+      await saveHabitStats(updatedStats);
+    }
   },
 
+  // ---------------- Toggle Done ----------------
   toggleDone: async (id) => {
     await get().toggleHabitToday(id);
   },

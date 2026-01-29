@@ -6,6 +6,7 @@ function generateId() {
 }
 
 const HABIT_KEY = "@becomeit_habits";
+const HABIT_STATS_KEY = "@becomeit_habit_stats";
 
 // ---------- helpers ----------
 
@@ -14,6 +15,12 @@ function todayISO() {
 }
 
 // ---------- core ----------
+
+export interface HabitStats {
+  totalCompletions: number;
+  totalOpportunities: number;
+  completionDates: string[]; // ISO dates
+}
 
 export async function getHabits(): Promise<Habit[]> {
   const raw = await AsyncStorage.getItem(HABIT_KEY);
@@ -56,6 +63,13 @@ export async function deleteHabit(id: string) {
   return updated; // return full updated array
 }
 
+function defaultStats(): HabitStats {
+  return {
+    totalCompletions: 0,
+    totalOpportunities: 0,
+    completionDates: [],
+  };
+}
 
 export async function toggleHabitToday(id: string) {
   const habits = await getHabits();
@@ -81,4 +95,26 @@ export async function toggleHabitToday(id: string) {
 
 export async function clearHabits() {
   await AsyncStorage.removeItem(HABIT_KEY);
+}
+
+export async function getHabitStats(): Promise<HabitStats> {
+  const raw = await AsyncStorage.getItem(HABIT_STATS_KEY);
+  if (!raw) return defaultStats();
+
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      totalCompletions: parsed.totalCompletions ?? 0,
+      totalOpportunities: parsed.totalOpportunities ?? 0,
+      completionDates: Array.isArray(parsed.completionDates)
+        ? parsed.completionDates
+        : [],
+    };
+  } catch {
+    return defaultStats();
+  }
+}
+
+export async function saveHabitStats(stats: HabitStats) {
+  await AsyncStorage.setItem(HABIT_STATS_KEY, JSON.stringify(stats));
 }
