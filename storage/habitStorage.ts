@@ -39,7 +39,7 @@ export async function addHabit(
   habit: Omit<Habit, "id" | "createdAt" | "completedDates">
 ) {
   const habits = await getHabits();
-
+ 
   const newHabit: Habit = {
     id: generateId(),
     title: habit.title,

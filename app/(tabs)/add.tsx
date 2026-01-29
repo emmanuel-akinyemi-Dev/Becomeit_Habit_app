@@ -7,8 +7,17 @@ import { useHabitStore } from "@/store/habitStore";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
-import { useState } from "react";
-import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import React, { useState } from "react";
+import {
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -17,24 +26,26 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XStack } from "tamagui";
 
+// Simple emoji set
+const EMOJIS = ["😀", "💧", "📚", "🚶‍♂️", "❤️", "🏋️‍♀️", "📝", "☕", "🎯", "🛌"];
+
 export default function AddHabitScreen() {
   const { addHabit } = useHabitStore();
 
   const [title, setTitle] = useState("");
   const [icon, setIcon] = useState("");
+  const [showEmojiModal, setShowEmojiModal] = useState(false);
   const [habitType, setHabitType] = useState<HabitType>("REPEATING");
   const [mode, setMode] = useState<"startNow" | "scheduleStart">("startNow");
   const [frequency, setFrequency] = useState<RepeatUnit>("minutes");
   const primary = useThemePrimary();
-  const allIntervalOptions = [1, 2, 5, 10, 30, "Manual"] as const;
+  const allIntervalOptions = [1, 5, 10, 30, "Manual"] as const;
   const [intervalChoice, setIntervalChoice] =
     useState<(typeof allIntervalOptions)[number]>(1);
   const [intervalManual, setIntervalManual] = useState(1);
-
   const [time, setTime] = useState(new Date());
   const [tempTime, setTempTime] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
-
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -44,20 +55,11 @@ export default function AddHabitScreen() {
   const handleSave = async () => {
     const interval =
       intervalChoice === "Manual" ? intervalManual : (intervalChoice as number);
-
     const baseTime = mode === "startNow" ? new Date() : time;
-    const startTime = `${baseTime
-      .getHours()
-      .toString()
-      .padStart(2, "0")}:${baseTime.getMinutes().toString().padStart(2, "0")}`;
+    const startTime = `${baseTime.getHours().toString().padStart(2, "0")}:${baseTime.getMinutes().toString().padStart(2, "0")}`;
 
-    const schedule: HabitSchedule = {
-      interval,
-      unit: frequency,
-      startTime,
-    };
-
-    await addHabit({ title, habitType, schedule });
+    const schedule: HabitSchedule = { interval, unit: frequency, startTime };
+    await addHabit({ title, habitType, schedule,icon });
     router.back();
   };
 
@@ -69,15 +71,6 @@ export default function AddHabitScreen() {
     }
   };
 
-  const ICONS = [
-    "checkmark-circle",
-    "water-outline",
-    "book-outline",
-    "walk-outline",
-    "heart-outline",
-    "fitness-outline",
-  ];
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1, padding: 20 }}>
@@ -85,22 +78,29 @@ export default function AddHabitScreen() {
           Add Habit
         </Text>
 
-        {/* Templates */}
-        <Text style={{ fontWeight: "600", marginBottom: 8, color: primary }}>
-          Quick templates
+        {/* ---------- Quick Templates Grid ---------- */}
+        <Text style={{ fontWeight: "600", marginVertical: 8, color: primary }}>
+          Quick Templates
         </Text>
-
-        <XStack gap={10} marginBottom={20}>
-          {HABIT_TEMPLATES.map((tpl: any) => (
+        <FlatList
+          data={HABIT_TEMPLATES}
+          keyExtractor={(item) => item.id}
+          numColumns={3} // grid layout
+          columnWrapperStyle={{
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+          renderItem={({ item }) => (
             <Pressable
-              key={tpl.id}
               onPress={() => {
-                setTitle(tpl.title);
-                setFrequency(tpl.unit);
-                setIntervalChoice(tpl.interval);
-                setHabitType(tpl.habitType);
+                setTitle(item.title);
+                setFrequency(item.unit);
+                setIntervalChoice(item.interval as any);
+                setHabitType(item.habitType);
               }}
               style={{
+                flex: 1,
+                marginHorizontal: 4,
                 padding: 12,
                 borderRadius: 12,
                 backgroundColor: colors.white,
@@ -110,30 +110,117 @@ export default function AddHabitScreen() {
                 shadowRadius: 4,
               }}
             >
-              <Ionicons name={tpl.icon as any} size={20} color={primary} />
-              <Text style={{ fontSize: 12, marginTop: 4 }}>{tpl.title}</Text>
+              <Ionicons name={item.icon as any} size={20} color={primary} />
+              <Text style={{ fontSize: 12, marginTop: 4, textAlign: "center" }}>
+                {item.title}
+              </Text>
             </Pressable>
-          ))}
-        </XStack>
-
-        <TextInput
-          placeholder="Habit title"
-          placeholderTextColor={colors.placeholderText}
-          value={title}
-          onChangeText={setTitle}
-          style={{
-            marginTop: 10,
-            fontSize: 16,
-            padding: 14,
-            borderRadius: 12,
-            backgroundColor: colors.lightGrayBg,
-            color: colors.text,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
+          )}
         />
 
-        {/* Mode Toggle */}
+        {/* ---------- Habit Title + Emoji Picker ---------- */}
+        <XStack
+          style={{
+            borderColor: colors.gray,
+            backgroundColor: colors.lightGrayBg,
+            borderWidth: 0.5, 
+            fontSize: 16,
+            borderRadius: 12,
+            justifyContent:"space-between",
+          }}
+        >
+          <TextInput
+            placeholder="Habit title"
+            placeholderTextColor={colors.placeholderText}
+            value={icon ? `${icon} ${title}` : title}
+            onChangeText={(t) => setTitle(t.replace(icon, "").trim())}
+            style={{
+              width:"86%",
+              fontSize: 16,
+              padding: 14, 
+              borderColor: "transparent",
+
+              color: colors.text,
+            }}
+          />
+          <Pressable
+            onPress={() => setShowEmojiModal(true)}
+            style={{
+              borderRadius: 20,
+              backgroundColor: colors.lightGrayBg,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ fontSize: 25, right:10 }}>{"😀"}</Text>
+          </Pressable>
+        </XStack>
+
+        {/* ---------- Emoji Modal ---------- */}
+        <Modal visible={showEmojiModal} transparent animationType="fade">
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "#00000066",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: colors.white,
+                padding: 20,
+                borderRadius: 16,
+                width: 250,
+              }}
+            >
+              <Text
+                style={{
+                  fontWeight: "600",
+                  marginBottom: 12,
+                  textAlign: "center",
+                }}
+              >
+                Select Emoji
+              </Text>
+              <FlatList
+                data={EMOJIS}
+                numColumns={5}
+                keyExtractor={(item, idx) => idx.toString()}
+                columnWrapperStyle={{
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIcon(item);
+                      setShowEmojiModal(false);
+                    }}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <Pressable
+                onPress={() => setShowEmojiModal(false)}
+                style={{ marginTop: 10, padding: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: primary, fontWeight: "600" }}>
+                  Cancel
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ---------- Mode Toggle ---------- */}
         <XStack marginVertical={20} gap={10}>
           {["startNow", "scheduleStart"].map((m) => (
             <Pressable
@@ -161,13 +248,12 @@ export default function AddHabitScreen() {
           ))}
         </XStack>
 
-        {/* Time Picker */}
+        {/* ---------- Time Picker ---------- */}
         {mode === "scheduleStart" && (
           <View style={{ marginBottom: 20 }}>
             <Text style={{ fontWeight: "600", color: colors.text }}>
               Start Time
             </Text>
-
             <Pressable
               onPress={() => setShowPicker(true)}
               style={{
@@ -184,7 +270,6 @@ export default function AddHabitScreen() {
                 {time.getMinutes().toString().padStart(2, "0")}
               </Text>
             </Pressable>
-
             {showPicker && (
               <DateTimePicker
                 value={time}
@@ -195,34 +280,8 @@ export default function AddHabitScreen() {
             )}
           </View>
         )}
-        <Text style={{ fontWeight: "600", marginBottom: 8, color: primary }}>
-          Icon
-        </Text>
 
-        <XStack gap={12} marginBottom={20}>
-          {ICONS.map((ic) => (
-            <Pressable
-              key={ic}
-              onPress={() => setIcon(ic)}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: icon === ic ? primary : colors.border,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons
-                name={ic as any}
-                size={22}
-                color={icon === ic ? colors.white : colors.gray}
-              />
-            </Pressable>
-          ))}
-        </XStack>
-
-        {/* Frequency */}
+        {/* ---------- Frequency + Interval ---------- */}
         <Text
           style={{ fontWeight: "600", color: colors.black, marginBottom: 10 }}
         >
@@ -230,13 +289,11 @@ export default function AddHabitScreen() {
         </Text>
         <UnitSelector value={frequency} onChange={setFrequency} />
 
-        {/* Interval */}
         <Text style={{ marginTop: 20, fontWeight: "600", color: colors.black }}>
           Interval
         </Text>
-
         <XStack gap={10} flexWrap="wrap" marginTop={10}>
-          {(frequency === "minutes" ? [1, 2] : allIntervalOptions).map(
+          {allIntervalOptions.map(
             (opt) => (
               <Pressable
                 key={opt.toString()}
@@ -262,7 +319,6 @@ export default function AddHabitScreen() {
             ),
           )}
         </XStack>
-
         {intervalChoice === "Manual" && (
           <TextInput
             keyboardType="number-pad"
@@ -280,6 +336,7 @@ export default function AddHabitScreen() {
           />
         )}
 
+        {/* ---------- Save Button ---------- */}
         <Animated.View style={animatedStyle}>
           <Pressable
             onPressIn={() => (scale.value = withSpring(0.96))}
@@ -287,7 +344,7 @@ export default function AddHabitScreen() {
             onPressOut={() => (scale.value = withSpring(1))}
             onPress={handleSave}
             style={{
-              marginTop:30,
+              marginTop: 30,
               paddingVertical: 16,
               borderRadius: 14,
               backgroundColor: primary,

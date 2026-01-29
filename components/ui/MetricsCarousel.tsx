@@ -11,8 +11,8 @@ export default function MetricsCarousel({ completionDates }: Props) {
   const { width } = useWindowDimensions();
 
   return (
-    <View width={width}>
-      <HabitMetricPager completionDates={completionDates} />
-    </View>
+    <View width={width} height={"100%"}>
+      <HabitMetricPager completionDates={completionDates ?? []} />
+    </View> 
   );
 }

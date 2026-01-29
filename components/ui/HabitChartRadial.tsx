@@ -1,51 +1,76 @@
-import React from "react";
-import { View } from "tamagui";
-import Svg, { Circle, Line } from "react-native-svg";
-import { HourlyData } from "@/helpers/metricsHelper";
 import colors from "@/constants/colors";
+import { useThemePrimary } from "@/hooks/useThemePrimary";
+import React from "react";
+import { Text, View } from "tamagui";
+
+interface HourlyData {
+  hour: number; // 0–23
+  completed: boolean;
+}
 
 interface Props {
   data: HourlyData[];
-  size?: number; // diameter
+  size?: number; // diameter of the circle
 }
 
-export default function HabitChartRadial({ data, size = 200 }: Props) {
-  const center = size / 2;
-  const radius = size / 2 - 20;
-  const strokeWidth = 10;
+export default function HabitChartRadial({ data = [], size = 100 }: Props) {
+  const primary = useThemePrimary();
+
+  const radius = size / 2;
+  const segmentCount = data.length || 24;
+  const angleStep = (2 * Math.PI) / segmentCount;
+  const barThickness = 7;
+
+  // ✅ Count active hours
+  const activeHours = data.filter((h) => h.completed).length;
+
+  // Highlight if > 13 hours
+  const activeColor = activeHours >= 13 ? primary : colors.gray;
 
   return (
-    <View width={size} height={size} alignItems="center" justifyContent="center">
-      <Svg width={size} height={size}>
-        {data.map((d, i) => {
-          const angle = (i / 24) * 2 * Math.PI - Math.PI / 2; // start at top
-          const x1 = center + radius * Math.cos(angle);
-          const y1 = center + radius * Math.sin(angle);
-          const x2 = center + (radius - strokeWidth) * Math.cos(angle);
-          const y2 = center + (radius - strokeWidth) * Math.sin(angle);
+    <View
+      width={size}
+      height={size + 40}
+      alignItems="center"
+      justifyContent="center"
+    >
+      <View style={{position:"absolute", marginBottom:"15"}}> 
+        {/* ---------- Active Hours Counter ---------- */}
+        <Text
+          fontSize={36}
+          fontWeight="700"
+          color={activeColor} 
+        >
+          {activeHours}h
+        </Text>
+      </View>
+      {/* ---------- Radial Chart ---------- */}
+      <View width={size} height={size} style={{ position: "relative" }}>
+        {data.map((item, i) => {
+          const angle = i * angleStep - Math.PI / 2; // start top
+          const x = radius + Math.cos(angle) * (radius - barThickness);
+          const y = radius + Math.sin(angle) * (radius - barThickness);
 
           return (
-            <Line
-              key={i}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={d.completed ? colors.primary : colors.border}
-              strokeWidth={4}
-              strokeLinecap="round"
+            <View
+              key={`hour-${i}`}
+              style={{
+                position: "absolute",
+                left: x,
+                top: y,
+                width: barThickness,
+                height: barThickness,
+                borderRadius: barThickness / 2,
+                backgroundColor: item.completed ? primary : colors.border,
+                transform: [
+                  { translateX: -barThickness / 2 },
+                  { translateY: -barThickness * 2 },
+                ],
+              }}
             />
           );
         })}
-        <Circle
-          cx={center}
-          cy={center}
-          r={radius - strokeWidth - 2}
-          stroke={colors.border}
-          strokeWidth={2}
-          fill="none"
-        />
-      </Svg>
+      </View>
     </View>
   );
 }

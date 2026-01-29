@@ -42,4 +42,12 @@ export const HABIT_TEMPLATES: HabitTemplate[] = [
     interval: 1,
     habitType: "REPEATING",
   },
+      {
+    id: "Shop",
+    title: "Go shoping",
+    icon: "cart-outline",
+    unit: "daily",
+    interval: 1,
+    habitType: "REPEATING",
+  },
 ];

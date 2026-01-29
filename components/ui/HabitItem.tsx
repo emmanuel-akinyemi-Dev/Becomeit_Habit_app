@@ -17,12 +17,15 @@ export default function HabitItem({
   toggleHabitInterval,
   handleDelete,
 }: HabitItemProps) {
-  //  Absolute safety guard (do not remove)
-  if (!habit || !Array.isArray(habit.completedDates)) return null;
-
   const [nextText, setNextText] = useState("");
   const [buttonActive, setButtonActive] = useState(false);
   const primary = useThemePrimary();
+
+  // 🔒 Safety guard — AFTER hooks
+  if (!habit || !Array.isArray(habit.completedDates)) {
+    return null;
+  }
+
   useEffect(() => {
     const updateTimer = () => {
       const now = new Date();
@@ -35,7 +38,6 @@ export default function HabitItem({
         ? new Date(habit.lastNotifiedAt)
         : null;
 
-      //  Button is active ONLY when notification fired and not yet completed
       const isDue =
         lastNotified !== null &&
         (!lastCompleted || lastCompleted < lastNotified);
@@ -45,8 +47,8 @@ export default function HabitItem({
       const nextActivation = lastCompleted
         ? getNextActivation(habit, lastCompleted)
         : lastNotified
-          ? getNextActivation(habit, lastNotified)
-          : new Date(0);
+        ? getNextActivation(habit, lastNotified)
+        : new Date(0);
 
       setNextText(isDue ? "" : formatCountdown(nextActivation, now));
     };
@@ -100,6 +102,7 @@ export default function HabitItem({
       <YStack padding={5} gap={10} justifyContent="center" alignItems="center">
         <YStack width="100%">
           <Text style={{ fontSize: 18, fontWeight: "700", color: "#111" }}>
+            {habit.icon ? `${habit.icon} ` : ""}
             {habit.title}
           </Text>
 

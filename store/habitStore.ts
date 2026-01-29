@@ -2,6 +2,7 @@ import { cancelHabitNotification, scheduleHabitNotification } from "@/notificati
 import { getHabits, HabitStats, getHabitStats, saveHabits, saveHabitStats } from "@/storage/habitStorage";
 import { create } from "zustand";
 import { Habit, HabitSchedule, HabitType } from "../models/habit";
+import { isCompletedToday } from "@/helpers/metricsHelper";
 
 interface HabitState {
   habits: Habit[];
@@ -18,6 +19,9 @@ interface HabitState {
   markHabitNotified: (id: string) => Promise<void>;
 }
 
+
+
+
 export const useHabitStore = create<HabitState>((set, get) => ({
   habits: [],
   stats: {
@@ -27,6 +31,8 @@ export const useHabitStore = create<HabitState>((set, get) => ({
   },
   loading: true,
 
+
+  
   // ---------------- Load ----------------
   loadHabits: async () => {
     const data = await getHabits();
@@ -105,95 +111,98 @@ export const useHabitStore = create<HabitState>((set, get) => ({
 
   // ---------------- Toggle Today ----------------
   toggleHabitToday: async (id) => {
-    const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  let completedToday = false;
 
-    let completedToday = false;
+  const updatedHabits = get().habits.map(habit => {
+    if (habit.id !== id) return habit;
 
-    const updatedHabits = get().habits.map((habit) => {
-      if (habit.id !== id) return habit;
-      if (habit.completedDates.includes(today)) return habit;
+    // Check if already completed today
+    const alreadyDoneToday = habit.completedDates.some(isCompletedToday);
+    if (alreadyDoneToday) return habit;
 
-      completedToday = true;
+    completedToday = true;
 
-      const streak = habit.lastStreakDate === today ? habit.streak : (habit.streak ?? 0) + 1;
+    const todayStr = now.toISOString().split("T")[0]; // for streak check
+    const streak = habit.lastStreakDate === todayStr ? habit.streak : (habit.streak ?? 0) + 1;
 
-      const updatedHabit: Habit = {
-        ...habit,
-        completedDates: [...habit.completedDates, today],
-        streak,
-        lastStreakDate: today,
-      };
+    const updatedHabit: Habit = {
+      ...habit,
+      completedDates: [...habit.completedDates, now.toISOString()],
+      streak,
+      lastStreakDate: todayStr,
+    };
 
-      cancelHabitNotification(habit.id).then(() =>
-        scheduleHabitNotification(updatedHabit),
-      );
+    cancelHabitNotification(habit.id).then(() =>
+      scheduleHabitNotification(updatedHabit)
+    );
 
-      return updatedHabit;
-    });
+    return updatedHabit;
+  });
 
-    set({ habits: updatedHabits });
-    await saveHabits(updatedHabits);
+  set({ habits: updatedHabits });
+  await saveHabits(updatedHabits);
 
-    if (completedToday) {
-      const stats = get().stats;
-      const updatedStats: HabitStats = {
-        ...stats,
-        totalCompletions: stats.totalCompletions + 1,
-        completionDates: [...stats.completionDates, today],
-      };
-      set({ stats: updatedStats });
-      await saveHabitStats(updatedStats);
-    }
-  },
+  if (completedToday) {
+    const stats = get().stats;
+    const updatedStats: HabitStats = {
+      ...stats,
+      totalCompletions: stats.totalCompletions + 1,
+      completionDates: [...stats.completionDates, now.toISOString()],
+    };
+    set({ stats: updatedStats });
+    await saveHabitStats(updatedStats);
+  }
+},
 
   // ---------------- Toggle Interval ----------------
   toggleHabitInterval: async (id) => {
-    const now = new Date();
-    const today = now.toISOString().split("T")[0];
+  const now = new Date();
+  let completedNow = false;
 
-    let completedNow = false;
+  const updatedHabits = get().habits.map(habit => {
+    if (habit.id !== id) return habit;
+    if (!habit.lastNotifiedAt) return habit;
 
-    const updatedHabits = get().habits.map((habit) => {
-      if (habit.id !== id) return habit;
-      if (!habit.lastNotifiedAt) return habit;
+    const notifiedAt = new Date(habit.lastNotifiedAt);
+    const lastCompleted = habit.lastCompletedAt ? new Date(habit.lastCompletedAt) : null;
+    if (lastCompleted && lastCompleted >= notifiedAt) return habit;
 
-      const notifiedAt = new Date(habit.lastNotifiedAt);
-      const lastCompleted = habit.lastCompletedAt ? new Date(habit.lastCompletedAt) : null;
-      if (lastCompleted && lastCompleted >= notifiedAt) return habit;
+    completedNow = true;
 
-      const lastStreakDay = habit.lastCompletedAt ? new Date(habit.lastCompletedAt).toDateString() : null;
-      const incrementStreak = now.toDateString() !== lastStreakDay;
+    const lastStreakDay = habit.lastCompletedAt
+      ? new Date(habit.lastCompletedAt).toDateString()
+      : null;
+    const incrementStreak = now.toDateString() !== lastStreakDay;
 
-      completedNow = true;
+    const updatedHabit: Habit = {
+      ...habit,
+      completedDates: [...habit.completedDates, now.toISOString()],
+      lastCompletedAt: now.toISOString(),
+      streak: incrementStreak ? (habit.streak ?? 0) + 1 : habit.streak,
+    };
 
-      const updatedHabit: Habit = {
-        ...habit,
-        completedDates: [...habit.completedDates, now.toISOString()],
-        lastCompletedAt: now.toISOString(),
-        streak: incrementStreak ? (habit.streak ?? 0) + 1 : habit.streak,
-      };
+    cancelHabitNotification(habit.id).then(() =>
+      scheduleHabitNotification(updatedHabit)
+    );
 
-      cancelHabitNotification(habit.id).then(() =>
-        scheduleHabitNotification(updatedHabit),
-      );
+    return updatedHabit;
+  });
 
-      return updatedHabit;
-    });
+  set({ habits: updatedHabits });
+  await saveHabits(updatedHabits);
 
-    set({ habits: updatedHabits });
-    await saveHabits(updatedHabits);
-
-    if (completedNow) {
-      const stats = get().stats;
-      const updatedStats: HabitStats = {
-        ...stats,
-        totalCompletions: stats.totalCompletions + 1,
-        completionDates: [...stats.completionDates, today],
-      };
-      set({ stats: updatedStats });
-      await saveHabitStats(updatedStats);
-    }
-  },
+  if (completedNow) {
+    const stats = get().stats;
+    const updatedStats: HabitStats = {
+      ...stats,
+      totalCompletions: stats.totalCompletions + 1,
+      completionDates: [...stats.completionDates, now.toISOString()],
+    };
+    set({ stats: updatedStats });
+    await saveHabitStats(updatedStats);
+  }
+},
 
   // ---------------- Toggle Done ----------------
   toggleDone: async (id) => {

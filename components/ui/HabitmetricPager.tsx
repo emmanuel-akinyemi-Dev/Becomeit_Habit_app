@@ -1,21 +1,24 @@
-import { buildDailyChartData, MetricRange, getHourlyCompletion } from "@/helpers/metricsHelper";
+import {
+  buildDailyChartData,
+  buildMonthlyChartData,
+  buildWeeklyChartData,
+  getHourlyCompletion,
+  MetricView,
+} from "@/helpers/metricsHelper";
 import { useThemePrimary } from "@/hooks/useThemePrimary";
-import { useHabitStore } from "@/store/habitStore";
 import { ScrollView, useWindowDimensions } from "react-native";
 import { Text, YStack } from "tamagui";
 import HabitChart from "./HabitChart";
 import HabitChartRadial from "./HabitChartRadial";
 
-const RANGES: MetricRange[] = ["daily", "weekly", "monthly", "yearly"];
+const VIEWS: MetricView[] = ["today", "daily", "weekly", "monthly"];
 
 interface Props {
   completionDates: string[];
 }
 
-export default function HabitMetricPager({ completionDates }: Props) {
+export default function HabitMetricPager({ completionDates = [] }: Props) {
   const { width } = useWindowDimensions();
- 
-  const { stats } = useHabitStore();
   const primary = useThemePrimary();
 
   return (
@@ -24,25 +27,51 @@ export default function HabitMetricPager({ completionDates }: Props) {
       pagingEnabled
       showsHorizontalScrollIndicator={false}
       snapToInterval={width}
-      snapToAlignment="start"
       decelerationRate="fast"
+      contentContainerStyle={{
+        width: width * VIEWS.length,
+        height: "100%",
+      }}
     >
-      {RANGES.map((range) => (
-        <YStack key={range} width={width} backgroundColor="blue">
-          {/* INTERNAL padding only */}
-          <YStack padding="$4" gap="$3">
-            <Text fontSize="$6" fontWeight="700" color={primary}>
-              {range.toUpperCase()}
-            </Text>
+      {VIEWS.map((view) => (
+        <YStack key={view} width={width} paddingHorizontal="$4">
+          <Text
+            fontSize="$4"
+            fontWeight="600"
+            textAlign="center"
+            justifyContent="center"
+            color={primary}
+            left={-16}
+          >
+            {view.toUpperCase() + " " + "METRICS"}
+          </Text>
 
-            {range === "daily" && (
-              <HabitChartRadial data={getHourlyCompletion(completionDates)} />
-            )}
+          {view === "today" && (
+            <YStack left={-16} alignItems="center" justifyContent="center">
+              <HabitChartRadial
+                data={getHourlyCompletion(completionDates || [])}
 
-            {range !== "daily" && (
-              <HabitChart data={buildDailyChartData(completionDates)} />
-            )}
-          </YStack>
+              />
+            </YStack>
+          )}
+
+          {view === "daily" && (
+            <YStack left={-16} alignItems="center" justifyContent="center">
+              <HabitChart data={buildDailyChartData(completionDates || [])} />
+            </YStack>
+          )}
+
+          {view === "weekly" && (
+            <YStack left={-16} right={20} alignItems="center" justifyContent="center">
+              <HabitChart data={buildWeeklyChartData(completionDates || [])} />
+            </YStack>
+          )}
+
+          {view === "monthly" && (
+            <YStack left={-16} alignItems="center" justifyContent="center">
+              <HabitChart data={buildMonthlyChartData(completionDates || [])} />
+            </YStack>
+          )}
         </YStack>
       ))}
     </ScrollView>
