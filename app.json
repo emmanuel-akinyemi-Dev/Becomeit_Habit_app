@@ -12,7 +12,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.surro.trunkin", 
+      "package": "com.surro.trunkin",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#E6F4FE",
@@ -52,6 +52,8 @@
         "projectId": "4b9405f9-afdd-4f13-9d3b-3c020373f8d2"
       }
     },
-    "owner": "prumusprime"
+    "owner": "prumusprime",
+
+    "assetBundlePatterns": ["**/*"]
   }
 }

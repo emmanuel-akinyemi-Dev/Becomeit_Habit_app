@@ -1,13 +1,17 @@
 import { Habit } from "@/models/habit";
-import { useSettingsStore } from "@/store/settingsStore";
 import { useHabitStore } from "@/store/habitStore";
+import { useSettingsStore,Tone, } from "@/store/settingsStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
+import { Platform } from "react-native"; 
+
 
 const NOTIFICATION_KEY_PREFIX = "habit_notification_";
 
-// ---------------- CANCEL ----------------
+/* =======================
+   CANCEL
+======================= */
 export async function cancelHabitNotification(habitId: string) {
   const storedId = await AsyncStorage.getItem(
     NOTIFICATION_KEY_PREFIX + habitId,
@@ -19,7 +23,9 @@ export async function cancelHabitNotification(habitId: string) {
   }
 }
 
-// ---------------- PERMISSIONS ----------------
+/* =======================
+   PERMISSIONS
+======================= */
 export function useNotificationPermissions() {
   useEffect(() => {
     (async () => {
@@ -43,7 +49,9 @@ export function useNotificationPermissions() {
   }, []);
 }
 
-// ---------------- TRIGGER BUILDER ----------------
+/* =======================
+   TRIGGER BUILDER (FIXED)
+======================= */
 function buildTrigger(habit: Habit) {
   const { unit, interval, startTime } = habit.schedule;
   const now = new Date();
@@ -51,7 +59,7 @@ function buildTrigger(habit: Habit) {
   const [hour, minute] = startTime.split(":").map(Number);
 
   let next = new Date();
-  next.setHours(hour, minute, now.getSeconds(), 0);
+  next.setHours(hour, minute, 0, 0);
 
   if (habit.lastCompletedAt) {
     next = new Date(habit.lastCompletedAt);
@@ -78,9 +86,24 @@ function buildTrigger(habit: Habit) {
     next = new Date(next.getTime() + intervalMs);
   }
 
+  const seconds = Math.ceil((next.getTime() - now.getTime()) / 1000);
+
+  // ✅ Android: ALWAYS timeInterval
+  if (Platform.OS === "android") {
+    return {
+      type: "timeInterval",
+      seconds,
+      repeats: false,
+    };
+  }
+
+  // ✅ iOS: calendar is allowed
   if (unit === "minutes" || unit === "hourly") {
-    const seconds = Math.ceil((next.getTime() - now.getTime()) / 1000);
-    return { type: "timeInterval", seconds, repeats: false };
+    return {
+      type: "timeInterval",
+      seconds,
+      repeats: false,
+    };
   }
 
   return {
@@ -91,7 +114,9 @@ function buildTrigger(habit: Habit) {
   };
 }
 
-// ---------------- SCHEDULE ----------------
+/* =======================
+   SCHEDULE
+======================= */
 export async function scheduleHabitNotification(habit: Habit) {
   const { notificationsEnabled } = useSettingsStore.getState();
   if (!notificationsEnabled) return;
@@ -102,14 +127,12 @@ export async function scheduleHabitNotification(habit: Habit) {
 
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
-      title: "BecomeIt",
+      title: "TrunkI",
       body: habit.title,
-      data: {
-        habitId: habit.id,
-      },
+      data: { habitId: habit.id },
       sound: "default",
     },
-    trigger: trigger as any,
+    trigger:trigger as any,
   });
 
   await AsyncStorage.setItem(
@@ -120,27 +143,26 @@ export async function scheduleHabitNotification(habit: Habit) {
   console.log("[Scheduler] Scheduled:", habit.title);
 }
 
-// ---------------- LISTENER (🔥 THIS FIXES YOUR BUTTON) ----------------
+/* =======================
+   LISTENERS (UNCHANGED)
+======================= */
 export function useHabitNotificationListener() {
   useEffect(() => {
-    // App in foreground
-    const receivedSub =
-      Notifications.addNotificationReceivedListener((notification) => {
+    const receivedSub = Notifications.addNotificationReceivedListener(
+      (notification) => {
         const habitId = notification.request.content.data?.habitId;
         if (!habitId) return;
-
         useHabitStore.getState().markHabitNotified(habitId as string);
-      });
+      },
+    );
 
-    // App background / killed → user taps notification
-    const responseSub =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        const habitId =
-          response.notification.request.content.data?.habitId;
+    const responseSub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const habitId = response.notification.request.content.data?.habitId;
         if (!habitId) return;
-
         useHabitStore.getState().markHabitNotified(habitId as string);
-      });
+      },
+    );
 
     return () => {
       receivedSub.remove();
@@ -148,12 +170,32 @@ export function useHabitNotificationListener() {
     };
   }, []);
 }
+
+/* ---- NON-HOOK LISTENER (SAFE FOR ROOT) ---- */
 export function registerHabitNotificationListener() {
   Notifications.addNotificationReceivedListener((notification) => {
     const habitId = notification.request.content.data?.habitId;
     if (!habitId) return;
+    useHabitStore.getState().markHabitNotified(habitId as string);
+  });
+}
+const NOTIFICATION_SOUNDS: Record<Tone, string | null> = {
+  system: null,             // use default
+  bell: "bell.wav",
+  chime: "chime.wav",
+  beep: "beep.wav",
+};
 
-    console.log("[Notify Fired]", habitId);
-    useHabitStore.getState().markHabitNotified(habitId as any);
+export async function scheduleNotificationWithTone(title: string, body: string) {
+  const tone = useSettingsStore.getState().tone; // get the selected tone
+  const soundFile = NOTIFICATION_SOUNDS[tone];
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: soundFile || "default", // <-- this sets the notification sound
+    },
+    trigger: { seconds: 5 } as any, // example, adapt to your schedule
   });
 }

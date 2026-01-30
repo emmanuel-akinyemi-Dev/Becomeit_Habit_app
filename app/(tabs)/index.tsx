@@ -1,5 +1,6 @@
 import HabitItem from "@/components/ui/HabitItem";
 import MetricsCarousel from "@/components/ui/MetricsCarousel";
+import { PaginationDots } from "@/components/ui/pagenationDots";
 import { AFFIRMATIONS } from "@/constants/afirmations";
 import colors from "@/constants/colors";
 import { getWeeklyCompletion } from "@/helpers/streakHelpers";
@@ -8,7 +9,7 @@ import { useHabitStore } from "@/store/habitStore";
 import React, { useEffect, useMemo } from "react";
 import { Alert, FlatList, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { XStack, YStack, View } from "tamagui";
+import { View, XStack, YStack } from "tamagui";
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -121,20 +122,50 @@ export default function HomeScreen() {
         {/* ---------- Metrics Carousel ---------- */}
         <View style={{ height: 150, marginBottom: 10 }}>
           <MetricsCarousel completionDates={stats?.completionDates} />
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              alignSelf: "center", 
+              padding:10
+            }}
+          >
+            <PaginationDots activeIndex={1} activeColor={primary  } />
+          </View>
         </View>
 
         {/* ---------- Metrics Cards ---------- */}
-        <XStack gap={12} marginBottom={16}>
-          <YStack flex={1} padding={14} borderRadius={16} backgroundColor={primary} alignItems="center">
-            <Text style={{ color: colors.white, fontWeight: "600" }}>Completed</Text>
-            <Text style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}>
+        <XStack gap={12} marginBottom={16} marginTop={20}>
+          <YStack
+            flex={1}
+            padding={14}
+            borderRadius={16}
+            backgroundColor={primary}
+            alignItems="center"
+          >
+            <Text style={{ color: colors.white, fontWeight: "600" }}>
+              Completed
+            </Text>
+            <Text
+              style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}
+            >
               {metrics.totalCompleted}
             </Text>
           </YStack>
 
-          <YStack flex={1} padding={14} borderRadius={16} backgroundColor={primary} alignItems="center">
-            <Text style={{ color: colors.white, fontWeight: "600" }}>Success Rate</Text>
-            <Text style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}>
+          <YStack
+            flex={1}
+            padding={14}
+            borderRadius={16}
+            backgroundColor={primary}
+            alignItems="center"
+          >
+            <Text style={{ color: colors.white, fontWeight: "600" }}>
+              Success Rate
+            </Text>
+            <Text
+              style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}
+            >
               {metrics.successRate}%
             </Text>
           </YStack>
@@ -152,16 +183,27 @@ export default function HomeScreen() {
             shadowRadius: 6,
           }}
         >
-          <Text style={{ color: primary, fontWeight: "600", marginBottom: 6 }}>Affirmation</Text>
+          <Text style={{ color: primary, fontWeight: "600", marginBottom: 6 }}>
+            Affirmation
+          </Text>
           <Text style={{ color: colors.text, fontSize: 14 }}>
             {AFFIRMATIONS[new Date().getHours() % AFFIRMATIONS.length]}
           </Text>
         </View>
 
         {/* ---------- Habit List ---------- */}
-        {(!habits || habits.length === 0) ? (
-          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 50 }}>
-            <Text style={{ color: colors.gray, fontSize: 16, fontWeight: "600" }}>
+        {!habits || habits.length === 0 ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              paddingVertical: 50,
+            }}
+          >
+            <Text
+              style={{ color: colors.gray, fontSize: 16, fontWeight: "600" }}
+            >
               No reminder yet, go to add tab to create one
             </Text>
           </View>
@@ -170,7 +212,13 @@ export default function HomeScreen() {
             data={habits}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) =>
-              item ? <HabitItem habit={item} toggleHabitInterval={toggleHabitInterval} handleDelete={handleDeleteConfirm} /> : null
+              item ? (
+                <HabitItem
+                  habit={item}
+                  toggleHabitInterval={toggleHabitInterval}
+                  handleDelete={handleDeleteConfirm}
+                />
+              ) : null
             }
             scrollEnabled={false} // disable FlatList scroll, use outer ScrollView
             showsVerticalScrollIndicator={false}
