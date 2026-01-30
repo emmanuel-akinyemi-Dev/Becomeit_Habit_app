@@ -102,7 +102,7 @@ export async function scheduleHabitNotification(habit: Habit) {
 
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
-      title: "BecomeIt",
+      title: "TuskIN",
       body: habit.title,
       data: {
         habitId: habit.id,
