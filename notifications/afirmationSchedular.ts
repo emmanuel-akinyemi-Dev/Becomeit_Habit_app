@@ -1,9 +1,12 @@
-import * as Notifications from "expo-notifications";
+import { AFFIRMATIONS } from "@/constants/afirmations";
 import { SilentHours } from "@/store/settingsStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 
-const AFFIRMATION_ID = "hourly-affirmation";
+const AFFIRMATION_KEY = "@hourly_affirmation_last";
 
-/* helper */
+// ---------------- Helpers ----------------
 const isWithinSilentHours = (silent?: SilentHours) => {
   if (!silent?.enabled) return false;
 
@@ -12,45 +15,90 @@ const isWithinSilentHours = (silent?: SilentHours) => {
   const [eh, em] = silent.end.split(":").map(Number);
 
   const start = new Date();
-  start.setHours(sh, sm, 0);
+  start.setHours(sh, sm, 0, 0);
 
   const end = new Date();
-  end.setHours(eh, em, 0);
+  end.setHours(eh, em, 0, 0);
 
-  // overnight range (e.g. 22:00 → 07:00)
-  if (end < start) {
-    return now >= start || now <= end;
-  }
+  // overnight range
+  if (end < start) return now >= start || now <= end;
 
   return now >= start && now <= end;
 };
 
+// Calculate next notification time (next hour)
+const getNextHour = () => {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(now.getHours() + 1, 0, 0, 0);
+  return next;
+};
+
+// ---------------- Schedule ----------------
 export async function scheduleAffirmations(
-  intervalHours: number,
+  intervalHours: number = 1,
   silentHours?: SilentHours,
 ) {
-  // cancel previous affirmations
-  await Notifications.cancelScheduledNotificationAsync(AFFIRMATION_ID);
-
-  // don’t schedule during silent hours
   if (isWithinSilentHours(silentHours)) {
     console.log("[Affirmations] Skipped due to silent hours");
     return;
   }
 
-  await Notifications.scheduleNotificationAsync({
-    identifier: AFFIRMATION_ID,
-    content: {
-      title: "✨ Affirmation",
-      body: "You are focused, consistent, and becoming better every hour.",
-      sound: true,
-    },
-    trigger: {
-      type: "timeInterval",
-      seconds: intervalHours * 3600,
-      repeats: true,
-    } as any,
-  });
+  const next = getNextHour();
+  const affirmationIndex = next.getHours() % AFFIRMATIONS.length;
+  const affirmationText = AFFIRMATIONS[affirmationIndex];
 
-  console.log("[Affirmations] Scheduled every", intervalHours, "hours");
+  const notificationContent: Notifications.NotificationContentInput = {
+    title: "✨ Affirmation",
+    body: affirmationText,
+    sound: true,
+    data: { hour: next.getHours() },
+  };
+
+  let trigger: Notifications.NotificationTriggerInput;
+
+  if (Platform.OS === "android") {
+    const seconds = Math.ceil((next.getTime() - new Date().getTime()) / 1000);
+    trigger = {
+      type: "timeInterval",   
+      seconds,
+      repeats: true,
+    } as any;
+  } else {
+    trigger = {
+      type: "calendar",
+      hour: next.getHours(),
+      minute: 0,
+      repeats: true,
+    } as any;
+  }
+
+  try {
+    const existingId = await AsyncStorage.getItem(AFFIRMATION_KEY);
+    if (existingId) {
+      await Notifications.cancelScheduledNotificationAsync(existingId);
+    }
+
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: notificationContent,
+      trigger,
+    });
+
+    await AsyncStorage.setItem(AFFIRMATION_KEY, notificationId);
+    console.log(
+      `[Affirmations] Scheduled next affirmation for hour ${next.getHours()}: "${affirmationText}"`,
+    );
+  } catch (e) {
+    console.error("[Affirmations] Failed to schedule", e);
+  }
+}
+
+// ---------------- Cancel All ----------------
+export async function cancelAffirmations() {
+  const existingId = await AsyncStorage.getItem(AFFIRMATION_KEY);
+  if (existingId) {
+    await Notifications.cancelScheduledNotificationAsync(existingId);
+    await AsyncStorage.removeItem(AFFIRMATION_KEY);
+    console.log("[Affirmations] Canceled scheduled notifications");
+  }
 }

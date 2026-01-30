@@ -161,7 +161,7 @@ export default function HomeScreen() {
             alignItems="center"
           >
             <Text style={{ color: colors.white, fontWeight: "600" }}>
-              Success Rate
+              Accuracy
             </Text>
             <Text
               style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}
