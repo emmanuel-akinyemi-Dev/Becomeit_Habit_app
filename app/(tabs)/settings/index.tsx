@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XStack } from "tamagui";
+import { Platform } from "react-native";
 
 const TONES: { key: Tone; label: string; sound?: any }[] = [
   { key: "system", label: "System Default" },
@@ -18,6 +19,13 @@ const TONES: { key: Tone; label: string; sound?: any }[] = [
   { key: "chime", label: "Chime", sound: require("@/assets/sounds/chime.wav") },
   { key: "beep", label: "Beep", sound: require("@/assets/sounds/beep.wav") },
 ];
+
+const NOTIFICATION_SOUNDS: Record<Tone, string | null> = {
+  system: null,
+  bell: "bell.wav",
+  chime: "chime.wav",
+  beep: "beep.wav",
+};
 
 export default function SettingsScreen() {
   const primary = useThemePrimary();
@@ -68,6 +76,15 @@ export default function SettingsScreen() {
     setLocalTone(t);
     setTone(t);
     await playSound(sound);
+
+        if (Platform.OS === "android") {
+      const channelId = "default";
+      await Notifications.setNotificationChannelAsync(channelId, {
+        name: "Default",
+        importance: Notifications.AndroidImportance.MAX,
+        sound: t === "system" ? "default" : NOTIFICATION_SOUNDS[t],
+      });
+    }
   };
 
   /* ------------------ SILENT HOURS ------------------ */
@@ -300,7 +317,7 @@ export default function SettingsScreen() {
           </Text>
 
           <Pressable
-            onPress={()=>{}}
+            onPress={openFeatureSuggestion}
             style={{
               paddingVertical: 14,
               paddingHorizontal: 16,

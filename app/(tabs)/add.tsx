@@ -7,7 +7,7 @@ import { useHabitStore } from "@/store/habitStore";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -47,6 +47,25 @@ export default function AddHabitScreen() {
   const [tempTime, setTempTime] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const scale = useSharedValue(1);
+  /* ---------- Interval presets per unit ---------- */
+  const intervalOptions = useMemo<(number | "Manual")[]>(() => {
+    switch (frequency) {
+      case "minutes":
+        return [1, 5, 10, 30, "Manual"];
+      case "hourly":
+        return [1, 2, 4, 8, "Manual"];
+      case "daily":
+        return [1, 2, 3, 7, "Manual"];
+      case "weekly":
+        return [1, 2, 4, "Manual"];
+      case "monthly":
+        return [1, 2, 3, 6, "Manual"];
+      case "yearly":
+        return [1, "Manual"];
+      default:
+        return [1, "Manual"];
+    }
+  }, [frequency]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -59,7 +78,7 @@ export default function AddHabitScreen() {
     const startTime = `${baseTime.getHours().toString().padStart(2, "0")}:${baseTime.getMinutes().toString().padStart(2, "0")}`;
 
     const schedule: HabitSchedule = { interval, unit: frequency, startTime };
-    await addHabit({ title, habitType, schedule,icon });
+    await addHabit({ title, habitType, schedule, icon });
     router.back();
   };
 
@@ -123,21 +142,27 @@ export default function AddHabitScreen() {
           style={{
             borderColor: colors.gray,
             backgroundColor: colors.lightGrayBg,
-            borderWidth: 0.5, 
+            borderWidth: 0.5,
             fontSize: 16,
             borderRadius: 12,
-            justifyContent:"space-between",
+            justifyContent: "space-between",
           }}
         >
           <TextInput
             placeholder="Habit title"
             placeholderTextColor={colors.placeholderText}
             value={icon ? `${icon} ${title}` : title}
-            onChangeText={(t) => setTitle(t.replace(icon, "").trim())}
+            onChangeText={(t) => {
+              if (icon && t.startsWith(icon)) {
+                setTitle(t.slice(icon.length + 1));
+              } else {
+                setTitle(t);
+              }
+            }}
             style={{
-              width:"86%",
+              width: "86%",
               fontSize: 16,
-              padding: 14, 
+              padding: 14,
               borderColor: "transparent",
 
               color: colors.text,
@@ -152,7 +177,7 @@ export default function AddHabitScreen() {
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontSize: 25, right:10 }}>{"😀"}</Text>
+            <Text style={{ fontSize: 25, right: 10 }}>{"😀"}</Text>
           </Pressable>
         </XStack>
 
@@ -293,32 +318,31 @@ export default function AddHabitScreen() {
           Interval
         </Text>
         <XStack gap={10} flexWrap="wrap" marginTop={10}>
-          {allIntervalOptions.map(
-            (opt) => (
-              <Pressable
-                key={opt.toString()}
-                onPress={() => setIntervalChoice(opt as any)}
+          {intervalOptions.map((opt) => (
+            <Pressable
+              key={opt.toString()}
+              onPress={() => setIntervalChoice(opt as any)}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                backgroundColor:
+                  intervalChoice === opt ? primary : colors.lightGrayBg,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Text
                 style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 14,
-                  borderRadius: 10,
-                  backgroundColor:
-                    intervalChoice === opt ? primary : colors.lightGrayBg,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  color: intervalChoice === opt ? colors.white : primary,
                 }}
               >
-                <Text
-                  style={{
-                    color: intervalChoice === opt ? colors.white : primary,
-                  }}
-                >
-                  {opt}
-                </Text>
-              </Pressable>
-            ),
-          )}
+                {opt}
+              </Text>
+            </Pressable>
+          ))}
         </XStack>
+
         {intervalChoice === "Manual" && (
           <TextInput
             keyboardType="number-pad"
