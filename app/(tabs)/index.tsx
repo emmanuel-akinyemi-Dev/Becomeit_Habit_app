@@ -7,7 +7,7 @@ import { getWeeklyCompletion } from "@/helpers/streakHelpers";
 import { useThemePrimary } from "@/hooks/useThemePrimary";
 import { useHabitStore } from "@/store/habitStore";
 import React, { useEffect, useMemo } from "react";
-import { Alert, FlatList, ScrollView, Text } from "react-native";
+import { FlatList, Pressable, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 
@@ -20,16 +20,27 @@ export default function HomeScreen() {
     loading,
     loadHabits,
     loadStats,
-    toggleHabitInterval,
+    markHabitCompleted,
     deleteHabit,
+    clearAllHabits,
   } = useHabitStore();
 
   const primary = useThemePrimary();
 
   useEffect(() => {
-    loadHabits();
-    loadStats();
+    // load habits and stats on mount
+    (async () => {
+      await loadHabits();
+      await loadStats();
+    })();
   }, []);
+
+  useEffect(() => {
+    // recompute stats whenever habits change
+    (async () => {
+      await loadStats();
+    })();
+  }, [habits]);
 
   const weekProgress = useMemo(
     () => getWeeklyCompletion(stats?.completionDates || []),
@@ -37,25 +48,32 @@ export default function HomeScreen() {
   );
 
   const metrics = useMemo(() => {
-    if (!stats) return { totalCompleted: 0, successRate: 0 };
+    // only active (not mastered) habits count toward accuracy
+    const activeHabits = habits.filter((h) => !h.isMastered);
 
-    const totalCompleted = stats.totalCompletions;
-    const totalOpportunities = stats.totalOpportunities || 1;
-    const successRate = Math.round((totalCompleted / totalOpportunities) * 100);
-
-    return { totalCompleted, successRate };
-  }, [stats]);
-
-  const handleDeleteConfirm = (id: string) => {
-    Alert.alert(
-      "Mastered Habit",
-      "Are you sure you want to mark this habit as mastered? This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Yes", style: "destructive", onPress: () => deleteHabit(id) },
-      ],
+    const totalOpportunities = activeHabits.reduce(
+      (sum, h) => sum + (h.notificationCount ?? 0),
+      0,
     );
-  };
+
+    const totalCompleted = activeHabits.reduce(
+      (sum, h) => sum + (h.completedCount ?? h.completedDates.length),
+      0,
+    );
+
+    const accuracy =
+      totalOpportunities === 0
+        ? 0
+        : Math.min(
+            100,
+            Math.round((totalCompleted / totalOpportunities) * 100),
+          );
+
+    return {
+      totalCompleted,
+      accuracy,
+    };
+  }, [habits, stats]);
 
   if (loading) {
     return (
@@ -67,7 +85,6 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Title ---------- */}
       <Text
         style={{
           fontSize: 24,
@@ -80,7 +97,7 @@ export default function HomeScreen() {
         My Habits
       </Text>
 
-      {/* ---------- Weekdays (sticky) ---------- */}
+      {/* Weekly progress */}
       <XStack
         justifyContent="space-between"
         padding={14}
@@ -114,27 +131,19 @@ export default function HomeScreen() {
         })}
       </XStack>
 
-      {/* ---------- Scrollable Content ---------- */}
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- Metrics Carousel ---------- */}
+        {/* Metrics */}
         <View style={{ height: 150, marginBottom: 10 }}>
-          <MetricsCarousel completionDates={stats?.completionDates} />
-          <View
-            style={{
-              justifyContent: "center",
-              alignItems: "center",
-              alignSelf: "center", 
-              padding:10
-            }}
-          >
-            <PaginationDots activeIndex={1} activeColor={primary  } />
+          <MetricsCarousel completionDates={stats.completionDates} />
+          <View style={{ alignItems: "center", padding: 10 }}>
+            <PaginationDots activeIndex={1} activeColor={primary} />
           </View>
         </View>
 
-        {/* ---------- Metrics Cards ---------- */}
+        {/* Stats cards */}
         <XStack gap={12} marginBottom={16} marginTop={20}>
           <YStack
             flex={1}
@@ -143,9 +152,7 @@ export default function HomeScreen() {
             backgroundColor={primary}
             alignItems="center"
           >
-            <Text style={{ color: colors.white, fontWeight: "600" }}>
-              Completed
-            </Text>
+            <Text style={{ color: colors.white }}>Completed</Text>
             <Text
               style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}
             >
@@ -160,50 +167,36 @@ export default function HomeScreen() {
             backgroundColor={primary}
             alignItems="center"
           >
-            <Text style={{ color: colors.white, fontWeight: "600" }}>
-              Accuracy
-            </Text>
+            <Text style={{ color: colors.white }}>Accuracy</Text>
             <Text
               style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}
             >
-              {metrics.successRate}%
+              {metrics.accuracy}%
             </Text>
           </YStack>
         </XStack>
 
-        {/* ---------- Affirmation ---------- */}
+        {/* Affirmation */}
         <View
           style={{
             padding: 16,
             borderRadius: 16,
             backgroundColor: colors.white,
             marginBottom: 16,
-            shadowColor: primary,
-            shadowOpacity: 0.08,
-            shadowRadius: 6,
           }}
         >
           <Text style={{ color: primary, fontWeight: "600", marginBottom: 6 }}>
             Affirmation
           </Text>
-          <Text style={{ color: colors.text, fontSize: 14 }}>
+          <Text style={{ color: colors.text }}>
             {AFFIRMATIONS[new Date().getHours() % AFFIRMATIONS.length]}
           </Text>
         </View>
 
-        {/* ---------- Habit List ---------- */}
-        {!habits || habits.length === 0 ? (
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              paddingVertical: 50,
-            }}
-          >
-            <Text
-              style={{ color: colors.gray, fontSize: 16, fontWeight: "600" }}
-            >
+        {/* Habit list */}
+        {habits.length === 0 ? (
+          <View style={{ alignItems: "center", paddingVertical: 50 }}>
+            <Text style={{ color: colors.gray, fontSize: 16 }}>
               No reminder yet, go to add tab to create one
             </Text>
           </View>
@@ -211,19 +204,17 @@ export default function HomeScreen() {
           <FlatList
             data={habits}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) =>
-              item ? (
-                <HabitItem
-                  habit={item}
-                  toggleHabitInterval={toggleHabitInterval}
-                  handleDelete={handleDeleteConfirm}
-                />
-              ) : null
-            }
-            scrollEnabled={false} // disable FlatList scroll, use outer ScrollView
-            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => <HabitItem habit={item} />}
+            scrollEnabled={false}
           />
         )}
+
+        <Pressable
+          onPress={async () => await clearAllHabits()}
+          style={{ padding: 12, backgroundColor: "red", borderRadius: 8, marginTop: 20 }}
+        >
+          <Text style={{ color: "white" }}>Clear All Habits</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );

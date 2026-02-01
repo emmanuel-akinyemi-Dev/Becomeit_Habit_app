@@ -14,13 +14,45 @@ function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
 
-// ---------- core ----------
+function computeAccuracy(
+  totalCompletions: number,
+  totalOpportunities: number,
+) {
+  if (!totalOpportunities) return 0;
+  return Math.round((totalCompletions / totalOpportunities) * 100);
+}
+
+/**
+ * Guard: a habit can only be completed once per notification
+ */
+function canCompleteHabit(habit: Habit & {
+  lastNotifiedAt?: number;
+  lastCompletedAt?: number;
+}) {
+  if (!habit.lastNotifiedAt) return false;
+  if (!habit.lastCompletedAt) return true;
+  return habit.lastCompletedAt < habit.lastNotifiedAt;
+}
+
+// ---------- stats ----------
 
 export interface HabitStats {
   totalCompletions: number;
   totalOpportunities: number;
-  completionDates: string[]; // ISO dates
+  completionDates: string[];
+  accuracy: number;
 }
+
+function defaultStats(): HabitStats {
+  return {
+    totalCompletions: 0,
+    totalOpportunities: 0,
+    completionDates: [],
+    accuracy: 0,
+  };
+}
+
+// ---------- core ----------
 
 export async function getHabits(): Promise<Habit[]> {
   const raw = await AsyncStorage.getItem(HABIT_KEY);
@@ -32,43 +64,79 @@ export async function saveHabits(habits: Habit[]) {
   await AsyncStorage.setItem(HABIT_KEY, JSON.stringify(habits));
 }
 
-// ---------- actions ----------
+// ---------- stats persistence ----------
+
+export async function getHabitStats(): Promise<HabitStats> {
+  const raw = await AsyncStorage.getItem(HABIT_STATS_KEY);
+  if (!raw) return defaultStats();
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    const totalCompletions = parsed.totalCompletions ?? 0;
+    const totalOpportunities = parsed.totalOpportunities ?? 0;
+
+    return {
+      totalCompletions,
+      totalOpportunities,
+      completionDates: Array.isArray(parsed.completionDates)
+        ? parsed.completionDates
+        : [],
+      accuracy: computeAccuracy(totalCompletions, totalOpportunities),
+    };
+  } catch {
+    return defaultStats();
+  }
+}
+
+/**
+ * Alias so store can call either name safely
+ */
+export const loadHabitStats = getHabitStats;
+
+export async function saveHabitStats(stats: HabitStats) {
+  const normalized: HabitStats = {
+    ...stats,
+    accuracy: computeAccuracy(
+      stats.totalCompletions,
+      stats.totalOpportunities,
+    ),
+  };
+
+  await AsyncStorage.setItem(
+    HABIT_STATS_KEY,
+    JSON.stringify(normalized),
+  );
+}
 
 // ---------- actions ----------
+
 export async function addHabit(
-  habit: Omit<Habit, "id" | "createdAt" | "completedDates">
+  habit: Omit<Habit, "id" | "createdAt" | "completedDates">,
 ) {
   const habits = await getHabits();
- 
+
   const newHabit: Habit = {
     id: generateId(),
     title: habit.title,
+    isMastered: false,
     schedule: habit.schedule,
+    notificationCount: 0,
+    completedCount: 0,
     createdAt: Date.now(),
     completedDates: [],
   };
 
   const updated = [...habits, newHabit];
   await saveHabits(updated);
-
-  return updated; // return full updated array for immediate state update
+  return updated;
 }
-
 
 export async function deleteHabit(id: string) {
   const habits = await getHabits();
   const updated = habits.filter((h) => h.id !== id);
   await saveHabits(updated);
-
-  return updated; // return full updated array
-}
-
-function defaultStats(): HabitStats {
-  return {
-    totalCompletions: 0,
-    totalOpportunities: 0,
-    completionDates: [],
-  };
+  return updated;
 }
 
 export async function toggleHabitToday(id: string) {
@@ -83,38 +151,79 @@ export async function toggleHabitToday(id: string) {
     return {
       ...habit,
       completedDates: completed
-        ? habit.completedDates.filter((d: any) => d !== today)
+        ? habit.completedDates.filter((d) => d !== today)
         : [...habit.completedDates, today],
     };
   });
 
   await saveHabits(updated);
-  return updated;  
+  return updated;
 }
-
 
 export async function clearHabits() {
   await AsyncStorage.removeItem(HABIT_KEY);
 }
 
-export async function getHabitStats(): Promise<HabitStats> {
-  const raw = await AsyncStorage.getItem(HABIT_STATS_KEY);
-  if (!raw) return defaultStats();
+// ---------- notification fired ----------
 
-  try {
-    const parsed = JSON.parse(raw);
-    return {
-      totalCompletions: parsed.totalCompletions ?? 0,
-      totalOpportunities: parsed.totalOpportunities ?? 0,
-      completionDates: Array.isArray(parsed.completionDates)
-        ? parsed.completionDates
-        : [],
-    };
-  } catch {
-    return defaultStats();
-  }
+export async function markHabitNotified(id: string) {
+  const habits = await getHabits();
+  const index = habits.findIndex(h => h.id === id);
+  if (index === -1) return habits;
+
+  const now = Date.now();
+
+  habits[index] = {
+    ...habits[index],
+    notificationCount: (habits[index].notificationCount ?? 0) + 1,
+    lastNotifiedAt: now as any,
+    due: true,
+  };
+
+  await saveHabits(habits);
+
+  const stats = await getHabitStats();
+  await saveHabitStats({
+    ...stats,
+    totalOpportunities: stats.totalOpportunities + 1,
+  });
+
+  return habits;
 }
 
-export async function saveHabitStats(stats: HabitStats) {
-  await AsyncStorage.setItem(HABIT_STATS_KEY, JSON.stringify(stats));
+// ---------- completion ----------
+
+export async function markHabitCompleted(id: string) {
+  const habits = await getHabits();
+  const index = habits.findIndex(h => h.id === id);
+  if (index === -1) return habits;
+
+  const habit:any = habits[index];
+ 
+  //  block double completion
+  if (!canCompleteHabit(habit)) {
+    return habits;
+  }
+
+  const now = Date.now();
+  const isoNow = new Date(now).toISOString();
+
+  habits[index] = {
+    ...habit,
+    completedCount: (habit.completedCount ?? 0) + 1,
+    completedDates: [...habit.completedDates, isoNow],
+    lastCompletedAt: now as any,
+    due: false,
+  };
+
+  await saveHabits(habits);
+
+  const stats = await getHabitStats();
+  await saveHabitStats({
+    ...stats,
+    totalCompletions: stats.totalCompletions + 1,
+    completionDates: [...stats.completionDates, isoNow],
+  });
+
+  return habits;
 }

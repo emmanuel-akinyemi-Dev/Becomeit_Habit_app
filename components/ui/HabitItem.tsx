@@ -2,74 +2,57 @@ import colors from "@/constants/colors";
 import { formatCountdown, getNextActivation } from "@/helpers/habitHelpers";
 import { useThemePrimary } from "@/hooks/useThemePrimary";
 import { Habit } from "@/models/habit";
+import { useHabitStore } from "@/store/habitStore";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import { XStack, YStack } from "tamagui";
 
 interface HabitItemProps {
-  habit?: Habit; //  MUST be optional
-  toggleHabitInterval: (id: string) => void;
-  handleDelete: (id: string) => void;
+  habit?: Habit;
 }
 
-export default function HabitItem({
-  habit,
-  toggleHabitInterval,
-  handleDelete,
-}: HabitItemProps) {
-  const [nextText, setNextText] = useState("");
-  const [buttonActive, setButtonActive] = useState(false);
+export default function HabitItem({ habit }: HabitItemProps) {
   const primary = useThemePrimary();
 
-  // 🔒 Safety guard — AFTER hooks
+  const markHabitCompleted = useHabitStore((state) => state.markHabitCompleted);
+  const deleteHabit = useHabitStore((state) => state.deleteHabit);
+
+  // 🔒 Safety guard
   if (!habit || !Array.isArray(habit.completedDates)) {
     return null;
   }
 
+  const [nextText, setNextText] = useState("");
+
+  const isDue = habit.due === true;
+
   useEffect(() => {
-    const updateTimer = () => {
+    const tick = () => {
       const now = new Date();
 
-      const lastCompleted = habit.lastCompletedAt
+      const reference = habit.lastCompletedAt
         ? new Date(habit.lastCompletedAt)
-        : null;
+        : habit.lastNotifiedAt
+          ? new Date(habit.lastNotifiedAt)
+          : null;
 
-      const lastNotified = habit.lastNotifiedAt
-        ? new Date(habit.lastNotifiedAt)
-        : null;
+      if (!reference) {
+        setNextText("");
+        return;
+      }
 
-      const isDue =
-        lastNotified !== null &&
-        (!lastCompleted || lastCompleted < lastNotified);
-
-      setButtonActive(isDue);
-
-      const nextActivation = lastCompleted
-        ? getNextActivation(habit, lastCompleted)
-        : lastNotified
-        ? getNextActivation(habit, lastNotified)
-        : new Date(0);
-
-      setNextText(isDue ? "" : formatCountdown(nextActivation, now));
+      const next = getNextActivation(habit, reference);
+      setNextText(isDue ? "" : formatCountdown(next, now));
     };
 
-    const interval = setInterval(updateTimer, 1000);
-    updateTimer();
-
-    return () => clearInterval(interval);
-  }, [habit]);
-
-  console.log(
-    habit.title,
-    "notified:",
-    habit.lastNotifiedAt,
-    "completed:",
-    habit.lastCompletedAt,
-  );
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [habit, isDue]);
 
   const scheduleLabel = `Every ${habit.schedule.interval} ${habit.schedule.unit} @ ${habit.schedule.startTime}`;
 
-  const confirmDelete = () => {
+  const confirmMastered = () => {
     Alert.alert(
       "Mastered Habit",
       `Are you sure you want to mark "${habit.title}" as mastered? This cannot be undone.`,
@@ -78,7 +61,9 @@ export default function HabitItem({
         {
           text: "Yes",
           style: "destructive",
-          onPress: () => handleDelete(habit.id),
+          onPress: async () => {
+            await useHabitStore.getState().deleteHabit(habit.id);
+          },
         },
       ],
     );
@@ -94,13 +79,13 @@ export default function HabitItem({
         shadowColor: primary,
         shadowOffset: { width: 1, height: 3 },
         shadowOpacity: 1,
-        borderWidth: 0.1,
         shadowRadius: 5,
         elevation: 7,
       }}
     >
-      <YStack padding={5} gap={10} justifyContent="center" alignItems="center">
-        <YStack width="100%">
+      <YStack gap={10}>
+        {/* Title */}
+        <YStack>
           <Text style={{ fontSize: 18, fontWeight: "700", color: "#111" }}>
             {habit.icon ? `${habit.icon} ` : ""}
             {habit.title}
@@ -119,33 +104,34 @@ export default function HabitItem({
           </XStack>
         </YStack>
 
-        <XStack width="100%" justifyContent="space-between">
+        {/* Actions */}
+        <XStack justifyContent="space-between">
           {/* Mastered */}
           <Pressable
-            onPress={confirmDelete}
+            onPress={confirmMastered}
             style={{
               paddingVertical: 8,
               paddingHorizontal: 16,
               borderRadius: 12,
               backgroundColor: "#ff4d4d",
-              alignItems: "center",
-              justifyContent: "center",
             }}
           >
-            <Text style={{ color: colors.white, fontWeight: "700", fontSize: 12 }}>
+            <Text
+              style={{ color: colors.white, fontWeight: "700", fontSize: 12 }}
+            >
               Mastered
             </Text>
           </Pressable>
 
-          {/* Interval completion button */}
+          {/* Complete */}
           <Pressable
-            disabled={!buttonActive}
-            onPress={() => toggleHabitInterval(habit.id)}
+            disabled={!isDue}
+            onPress={() => markHabitCompleted(habit.id)}
             style={{
               height: 36,
               width: 56,
               borderRadius: 18,
-              backgroundColor: buttonActive ? primary : colors.gray,  
+              backgroundColor: isDue ? primary : colors.gray,
               alignItems: "center",
               justifyContent: "center",
             }}

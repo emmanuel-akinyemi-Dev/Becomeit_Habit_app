@@ -6,9 +6,9 @@ import { TamaguiProvider } from 'tamagui';
 import  config  from '../tamagui.config';
 import NotificationProvider from '../providers/notificationProvider'; // <---
 // app/_layout.tsx
-import { useNotificationPermissions } from "@/notifications/scheduler";
+import { useNotificationPermissions } from '@/notifications';
 import { useNotificationSoundBridge } from "@/notifications/useNotificationSoundBridge";
-import { registerHabitNotificationListener } from "@/notifications/scheduler";
+import { registerHabitNotificationListener } from '@/notifications';
 
 
   

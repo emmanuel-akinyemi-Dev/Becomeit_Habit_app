@@ -49,7 +49,7 @@ export async function scheduleAffirmations(
   const affirmationText = AFFIRMATIONS[affirmationIndex];
 
   const notificationContent: Notifications.NotificationContentInput = {
-    title: "✨ Affirmation",
+    title: "✨ Read Aloud Affirmation",
     body: affirmationText,
     sound: true,
     data: { hour: next.getHours() },

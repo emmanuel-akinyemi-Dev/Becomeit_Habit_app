@@ -71,16 +71,33 @@ export default function AddHabitScreen() {
     transform: [{ scale: scale.value }],
   }));
 
-  const handleSave = async () => {
-    const interval =
-      intervalChoice === "Manual" ? intervalManual : (intervalChoice as number);
-    const baseTime = mode === "startNow" ? new Date() : time;
-    const startTime = `${baseTime.getHours().toString().padStart(2, "0")}:${baseTime.getMinutes().toString().padStart(2, "0")}`;
+const handleSave = async () => {
+  const interval =
+    intervalChoice === "Manual" ? intervalManual : (intervalChoice as number);
 
-    const schedule: HabitSchedule = { interval, unit: frequency, startTime };
-    await addHabit({ title, habitType, schedule, icon });
-    router.back();
-  };
+  const baseTime = mode === "startNow" ? new Date() : time;
+  const startTime = `${baseTime
+    .getHours()
+    .toString()
+    .padStart(2, "0")}:${baseTime
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}`;
+
+  const schedule: HabitSchedule = { interval, unit: frequency, startTime };
+
+  await addHabit({
+    title,
+    habitType,
+    schedule,
+    icon,
+    isMastered: false, 
+  });
+
+  setTitle("");
+  router.navigate("/");
+};
+
 
   const onChangePicker = (_: any, selectedDate?: Date) => {
     setShowPicker(Platform.OS === "ios");

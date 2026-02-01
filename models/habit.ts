@@ -27,6 +27,9 @@ export interface Habit {
   lastNotifiedAt?: string;
   lastCompletedAt?: string;
   icon?: string;
+  notificationCount: number; // total opportunities
+  completedCount: number; // successful clicks (can = completedDates.length)
+  isMastered: boolean;
   category?:
     | "Health"
     | "Productivity"
@@ -34,11 +37,13 @@ export interface Habit {
     | "Mindfulness"
     | "Social"
     | "Other";
+
+  /** runtime only: button enabled when true (notification fired) */
+  due?: boolean;
 }
 
- export interface HabitStats {
+export interface HabitStats {
   totalCompletions: number;
   totalOpportunities: number;
   completionDates: string[]; // ISO dates
 }
-
