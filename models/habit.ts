@@ -26,6 +26,7 @@ export interface Habit {
   nextActivationAt?: string;
   lastNotifiedAt?: any;
   lastCompletedAt?: any;
+  lastNotificationId:string |undefined;
   icon?: string;
   notificationCount: number; // total opportunities
   completedCount: number; // successful clicks (can = completedDates.length)

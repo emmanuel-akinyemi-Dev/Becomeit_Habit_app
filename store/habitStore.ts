@@ -52,7 +52,7 @@ interface HabitState {
 
   toggleHabitToday: (id: string) => Promise<void>;
   markHabitCompleted: (id: string) => Promise<void>;
-  markHabitNotified: (id: string) => Promise<void>;
+  markHabitNotified: (id:any, notifId:any) => Promise<void>;
   // markHabitDue: (id: string) => Promise<void>;
 
   clearAllHabits: () => Promise<void>;
@@ -98,6 +98,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       tone: habitData.tone,
       isMastered: false,
       pendingCompletions: 0,
+      lastNotificationId:undefined
     };
 
     const updated = [...get().habits, newHabit];
@@ -144,66 +145,67 @@ export const useHabitStore = create<HabitState>((set, get) => ({
 
   // ---------------- NOTIFIED ----------------
 
-  markHabitNotified: async (id) => {
-    set((state) => {
-      const habits = state.habits.map((h) =>
-        h.id === id
-          ? {
-              ...h,
-              notificationCount: (h.notificationCount ?? 0) + 1,
-              pendingCompletions: (h.pendingCompletions ?? 0) + 1,
-              lastNotifiedAt: Date.now(),
-            }
-          : h,
-      );
+markHabitNotified: async (id, notifId) => {
+  const now = Date.now();
 
-      // persist AFTER atomic update
-      saveHabits(habits);
+  set((state) => {
+    const habits = state.habits.map((h) => {
+      if (h.id !== id) return h;
 
-      return { habits };
+      return {
+        ...h,
+        notificationCount: (h.notificationCount ?? 0) + 1,
+        pendingCompletions: (h.pendingCompletions ?? 0) + 1,
+        lastNotifiedAt: now,
+        lastNotificationId: notifId,
+      };
     });
 
-    // stats = one opportunity per notification
-    const stats = await getHabitStats();
-    await saveHabitStats({
-      ...stats,
-      totalOpportunities: stats.totalOpportunities + 1,
-    });
+    saveHabits(habits);
+    return { habits };
+  });
 
-    set({ stats: await getHabitStats() });
-  },
+  // stats = ONE opportunity per notification
+  const stats = await getHabitStats();
+  await saveHabitStats({
+    ...stats,
+    totalOpportunities: stats.totalOpportunities + 1,
+  });
+
+  set({ stats: await getHabitStats() });
+},
+
 
   // ---------------- COMPLETED ----------------
+markHabitCompleted: async (id) => {
+  set((state) => {
+    const habits = state.habits.map((h) => {
+      if (h.id !== id) return h;
+      if ((h.pendingCompletions ?? 0) <= 0) return h;
 
-  markHabitCompleted: async (id) => {
-    set((state) => {
-      const habits = state.habits.map((h) => {
-        if (h.id !== id) return h;
-        if ((h.pendingCompletions ?? 0) <= 0) return h;
-
-        return {
-          ...h,
-          completedCount: (h.completedCount ?? 0) + 1,
-          completedDates: [...h.completedDates, new Date().toISOString()],
-          pendingCompletions: h.pendingCompletions - 1,
-          lastCompletedAt: Date.now(),
-        };
-      });
-
-      saveHabits(habits);
-      return { habits };
+      return {
+        ...h,
+        completedCount: (h.completedCount ?? 0) + 1,
+        completedDates: [...h.completedDates, new Date().toISOString()],
+        pendingCompletions: h.pendingCompletions - 1,
+        lastCompletedAt: Date.now(),
+      };
     });
 
-    // stats = 1 completion
-    const stats = await getHabitStats();
-    await saveHabitStats({
-      ...stats,
-      totalCompletions: stats.totalCompletions + 1,
-      completionDates: [...stats.completionDates, new Date().toISOString()],
-    });
+    saveHabits(habits);
+    return { habits };
+  });
 
-    set({ stats: await getHabitStats() });
-  },
+  const stats = await getHabitStats();
+  await saveHabitStats({
+    ...stats,
+    totalCompletions: stats.totalCompletions + 1,
+    completionDates: [...stats.completionDates, new Date().toISOString()],
+  });
+
+  set({ stats: await getHabitStats() });
+},
+
 
 
   clearAllHabits: async () => {

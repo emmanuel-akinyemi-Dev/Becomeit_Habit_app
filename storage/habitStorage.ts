@@ -122,6 +122,7 @@ export async function addHabit(
     createdAt: Date.now(),
     pendingCompletions:0,
     completedDates: [],
+    lastNotificationId:undefined
   };
 
   const updated = [...habits, newHabit];
