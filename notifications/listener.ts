@@ -10,7 +10,7 @@ export function registerHabitNotificationListener() {
     if (!habit) return;             // skip if habit no longer exists
     if (habit.isMastered) return;   // extra safety
 
-    useHabitStore.getState().markHabitDue(String(habitId));
+    // useHabitStore.getState().markHabitDue(String(habitId));
     useHabitStore.getState().markHabitNotified(String(habitId));
   });
 }

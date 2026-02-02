@@ -24,8 +24,8 @@ export interface Habit {
   lastStreakDate?: string;
   tone?: string;
   nextActivationAt?: string;
-  lastNotifiedAt?: string;
-  lastCompletedAt?: string;
+  lastNotifiedAt?: any;
+  lastCompletedAt?: any;
   icon?: string;
   notificationCount: number; // total opportunities
   completedCount: number; // successful clicks (can = completedDates.length)
@@ -40,6 +40,7 @@ export interface Habit {
 
   /** runtime only: button enabled when true (notification fired) */
   due?: boolean;
+  pendingCompletions:number
 }
 
 export interface HabitStats {

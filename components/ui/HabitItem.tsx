@@ -24,7 +24,8 @@ export default function HabitItem({ habit }: HabitItemProps) {
 
   const [nextText, setNextText] = useState("");
 
-  const isDue = habit.due === true;
+  const isDue = habit.pendingCompletions > 0
+
 
   useEffect(() => {
     const tick = () => {

@@ -1,4 +1,5 @@
 import { Habit, RepeatUnit } from "@/models/habit";
+import { useMemo } from "react";
 
 /* =========================================================
    NEXT OCCURRENCE (notification scheduling)
@@ -169,4 +170,35 @@ export function canCompleteHabit(habit: {
 
   // Allow only if completion is BEFORE last notification
   return habit.lastCompletedAt < habit.lastNotifiedAt;
+}
+
+
+export function Metrics( habits:any, stats:any){
+   const metrics = useMemo(() => {
+    // only active (not mastered) habits count toward accuracy
+    const activeHabits = habits.filter((h:any) => !h.isMastered);
+
+    const totalOpportunities = activeHabits.reduce(
+      (sum:any, h:any) => sum + (h.notificationCount ?? 0),
+      0,
+    );
+
+    const totalCompleted = activeHabits.reduce(
+      (sum:any, h:any) => sum + (h.completedCount ?? h.completedDates.length),
+      0,
+    );
+
+    const accuracy =
+      totalOpportunities === 0
+        ? 0
+        : Math.min(
+            100,
+            Math.round((totalCompleted / totalOpportunities) * 100),
+          );
+
+    return {
+      totalCompleted,
+      accuracy,
+    };
+  }, [habits, stats]);
 }

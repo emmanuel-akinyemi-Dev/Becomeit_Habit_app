@@ -14,21 +14,23 @@ function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
 
-function computeAccuracy(
-  totalCompletions: number,
-  totalOpportunities: number,
-) {
+function computeAccuracy(totalCompletions: number, totalOpportunities: number) {
   if (!totalOpportunities) return 0;
-  return Math.round((totalCompletions / totalOpportunities) * 100);
+  return Math.min(
+    100,
+    Math.round((totalCompletions / totalOpportunities) * 100),
+  );
 }
 
 /**
  * Guard: a habit can only be completed once per notification
  */
-function canCompleteHabit(habit: Habit & {
-  lastNotifiedAt?: number;
-  lastCompletedAt?: number;
-}) {
+function canCompleteHabit(
+  habit: Habit & {
+    lastNotifiedAt?: number;
+    lastCompletedAt?: number;
+  },
+) {
   if (!habit.lastNotifiedAt) return false;
   if (!habit.lastCompletedAt) return true;
   return habit.lastCompletedAt < habit.lastNotifiedAt;
@@ -97,16 +99,10 @@ export const loadHabitStats = getHabitStats;
 export async function saveHabitStats(stats: HabitStats) {
   const normalized: HabitStats = {
     ...stats,
-    accuracy: computeAccuracy(
-      stats.totalCompletions,
-      stats.totalOpportunities,
-    ),
+    accuracy: computeAccuracy(stats.totalCompletions, stats.totalOpportunities),
   };
 
-  await AsyncStorage.setItem(
-    HABIT_STATS_KEY,
-    JSON.stringify(normalized),
-  );
+  await AsyncStorage.setItem(HABIT_STATS_KEY, JSON.stringify(normalized));
 }
 
 // ---------- actions ----------
@@ -124,6 +120,7 @@ export async function addHabit(
     notificationCount: 0,
     completedCount: 0,
     createdAt: Date.now(),
+    pendingCompletions:0,
     completedDates: [],
   };
 
@@ -164,32 +161,6 @@ export async function clearHabits() {
   await AsyncStorage.removeItem(HABIT_KEY);
 }
 
-// ---------- notification fired ----------
-
-export async function markHabitNotified(id: string) {
-  const habits = await getHabits();
-  const index = habits.findIndex(h => h.id === id);
-  if (index === -1) return habits;
-
-  const now = Date.now();
-
-  habits[index] = {
-    ...habits[index],
-    notificationCount: (habits[index].notificationCount ?? 0) + 1,
-    lastNotifiedAt: now as any,
-    due: true,
-  };
-
-  await saveHabits(habits);
-
-  const stats = await getHabitStats();
-  await saveHabitStats({
-    ...stats,
-    totalOpportunities: stats.totalOpportunities + 1,
-  });
-
-  return habits;
-}
 
 // ---------- completion ----------
 
@@ -198,31 +169,31 @@ export async function markHabitCompleted(id: string) {
   const index = habits.findIndex(h => h.id === id);
   if (index === -1) return habits;
 
-  const habit:any = habits[index];
- 
-  //  block double completion
-  if (!canCompleteHabit(habit)) {
+  const habit = habits[index];
+
+  // 🚫 No pending opportunities
+  if ((habit.pendingCompletions ?? 0) <= 0) {
     return habits;
   }
 
-  const now = Date.now();
-  const isoNow = new Date(now).toISOString();
+  const now = new Date().toISOString();
 
   habits[index] = {
     ...habit,
     completedCount: (habit.completedCount ?? 0) + 1,
-    completedDates: [...habit.completedDates, isoNow],
-    lastCompletedAt: now as any,
-    due: false,
+    completedDates: [...habit.completedDates, now],
+    pendingCompletions: habit.pendingCompletions - 1,
+    lastCompletedAt: Date.now(),
   };
 
   await saveHabits(habits);
 
+  // ✅ EACH completion matches ONE notification
   const stats = await getHabitStats();
   await saveHabitStats({
     ...stats,
     totalCompletions: stats.totalCompletions + 1,
-    completionDates: [...stats.completionDates, isoNow],
+    completionDates: [...stats.completionDates, now],
   });
 
   return habits;

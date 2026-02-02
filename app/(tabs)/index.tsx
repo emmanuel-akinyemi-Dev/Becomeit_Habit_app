@@ -23,7 +23,7 @@ export default function HomeScreen() {
     markHabitCompleted,
     deleteHabit,
     clearAllHabits,
-  } = useHabitStore();
+  } = useHabitStore();    
 
   const primary = useThemePrimary();
 
@@ -47,33 +47,6 @@ export default function HomeScreen() {
     [stats?.completionDates],
   );
 
-  const metrics = useMemo(() => {
-    // only active (not mastered) habits count toward accuracy
-    const activeHabits = habits.filter((h) => !h.isMastered);
-
-    const totalOpportunities = activeHabits.reduce(
-      (sum, h) => sum + (h.notificationCount ?? 0),
-      0,
-    );
-
-    const totalCompleted = activeHabits.reduce(
-      (sum, h) => sum + (h.completedCount ?? h.completedDates.length),
-      0,
-    );
-
-    const accuracy =
-      totalOpportunities === 0
-        ? 0
-        : Math.min(
-            100,
-            Math.round((totalCompleted / totalOpportunities) * 100),
-          );
-
-    return {
-      totalCompleted,
-      accuracy,
-    };
-  }, [habits, stats]);
 
   if (loading) {
     return (
@@ -156,7 +129,7 @@ export default function HomeScreen() {
             <Text
               style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}
             >
-              {metrics.totalCompleted}
+              {stats.totalCompletions}
             </Text>
           </YStack>
 
@@ -171,7 +144,7 @@ export default function HomeScreen() {
             <Text
               style={{ color: colors.white, fontSize: 20, fontWeight: "700" }}
             >
-              {metrics.accuracy}%
+              {stats.accuracy}%
             </Text>
           </YStack>
         </XStack>

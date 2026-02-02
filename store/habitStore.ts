@@ -1,18 +1,16 @@
-import { create } from "zustand";
-import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
+import { create } from "zustand";
 
 import {
-  getHabits,
-  saveHabits,
   deleteHabit as deleteHabitStorage,
-  toggleHabitToday,
-  markHabitCompleted as markHabitCompletedStorage,
-  markHabitNotified as markHabitNotifiedStorage,
+  getHabits,
   getHabitStats,
-  saveHabitStats,
-  loadHabitStats,
   HabitStats,
+  loadHabitStats,
+  saveHabits,
+  saveHabitStats,
+  toggleHabitToday,
 } from "@/storage/habitStorage";
 
 import {
@@ -46,7 +44,7 @@ interface HabitState {
       | "lastStreakDate"
       | "nextActivationAt"
       | "isMastered"
-    >
+    >,
   ) => Promise<Habit>;
 
   deleteHabit: (id: string) => Promise<void>;
@@ -55,7 +53,7 @@ interface HabitState {
   toggleHabitToday: (id: string) => Promise<void>;
   markHabitCompleted: (id: string) => Promise<void>;
   markHabitNotified: (id: string) => Promise<void>;
-  markHabitDue: (id: string) => Promise<void>;
+  // markHabitDue: (id: string) => Promise<void>;
 
   clearAllHabits: () => Promise<void>;
 }
@@ -99,6 +97,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       notificationCount: 0,
       tone: habitData.tone,
       isMastered: false,
+      pendingCompletions: 0,
     };
 
     const updated = [...get().habits, newHabit];
@@ -146,41 +145,66 @@ export const useHabitStore = create<HabitState>((set, get) => ({
   // ---------------- NOTIFIED ----------------
 
   markHabitNotified: async (id) => {
-    const updatedHabits = await markHabitNotifiedStorage(id);
-    set({
-      habits: updatedHabits.map((h) =>
-        h.id === id ? { ...h, due: true } : h,
-      ),
+    set((state) => {
+      const habits = state.habits.map((h) =>
+        h.id === id
+          ? {
+              ...h,
+              notificationCount: (h.notificationCount ?? 0) + 1,
+              pendingCompletions: (h.pendingCompletions ?? 0) + 1,
+              lastNotifiedAt: Date.now(),
+            }
+          : h,
+      );
+
+      // persist AFTER atomic update
+      saveHabits(habits);
+
+      return { habits };
     });
 
-    //  reload stats from storage ONLY
+    // stats = one opportunity per notification
     const stats = await getHabitStats();
-    set({ stats });
+    await saveHabitStats({
+      ...stats,
+      totalOpportunities: stats.totalOpportunities + 1,
+    });
+
+    set({ stats: await getHabitStats() });
   },
 
   // ---------------- COMPLETED ----------------
 
   markHabitCompleted: async (id) => {
-    const updatedHabits = await markHabitCompletedStorage(id);
-    set({ habits: updatedHabits });
+    set((state) => {
+      const habits = state.habits.map((h) => {
+        if (h.id !== id) return h;
+        if ((h.pendingCompletions ?? 0) <= 0) return h;
 
-    // disable only this habit
-    get().updateHabit(id, { due: false });
+        return {
+          ...h,
+          completedCount: (h.completedCount ?? 0) + 1,
+          completedDates: [...h.completedDates, new Date().toISOString()],
+          pendingCompletions: h.pendingCompletions - 1,
+          lastCompletedAt: Date.now(),
+        };
+      });
 
-    //  reload stats from storage ONLY
+      saveHabits(habits);
+      return { habits };
+    });
+
+    // stats = 1 completion
     const stats = await getHabitStats();
-    set({ stats });
+    await saveHabitStats({
+      ...stats,
+      totalCompletions: stats.totalCompletions + 1,
+      completionDates: [...stats.completionDates, new Date().toISOString()],
+    });
+
+    set({ stats: await getHabitStats() });
   },
 
-  markHabitDue: async (id) => {
-    const updated = get().habits.map((h) =>
-      h.id === id ? { ...h, due: true } : h,
-    );
-    set({ habits: updated });
-    await saveHabits(updated);
-  },
-
-  // ---------------- CLEAR ----------------
 
   clearAllHabits: async () => {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
