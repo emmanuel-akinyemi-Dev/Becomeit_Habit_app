@@ -1,4 +1,4 @@
-import { Habit, RepeatUnit } from "@/models/habit";
+import { Habit, RepeatUnit } from "@/types/habit";
 import { useMemo } from "react";
 
 /* =========================================================
@@ -29,15 +29,10 @@ export function getNextOccurrence(habit: Habit): Date {
    - nextActivationAt
    ========================================================= */
 
-export function getNextActivation(
-  habit: Habit,
-  fromDate?: Date,
-): Date {
+export function getNextActivation(habit: Habit, fromDate?: Date): Date {
   const base =
     fromDate ??
-    (habit.lastCompletedAt
-      ? new Date(habit.lastCompletedAt)
-      : new Date());
+    (habit.lastCompletedAt ? new Date(habit.lastCompletedAt) : new Date());
 
   const next = new Date(base);
   advanceDate(next, habit.schedule.interval, habit.schedule.unit);
@@ -49,11 +44,7 @@ export function getNextActivation(
    DATE ADVANCER (shared logic)
    ========================================================= */
 
-function advanceDate(
-  date: Date,
-  interval: number,
-  unit: RepeatUnit,
-) {
+function advanceDate(date: Date, interval: number, unit: RepeatUnit) {
   switch (unit) {
     case "minutes":
       date.setMinutes(date.getMinutes() + interval);
@@ -80,10 +71,7 @@ function advanceDate(
    COUNTDOWN DISPLAY (UI ONLY)
    ========================================================= */
 
-export function formatCountdown(
-  next: Date,
-  now: Date = new Date(),
-): string {
+export function formatCountdown(next: Date, now: Date = new Date()): string {
   const diffMs = next.getTime() - now.getTime();
   if (diffMs <= 0) return "Now";
 
@@ -92,12 +80,9 @@ export function formatCountdown(
   const diffHrs = Math.floor(diffMin / 60);
   const diffDays = Math.floor(diffHrs / 24);
 
-  if (diffDays > 0)
-    return `Next: ${diffDays} day${diffDays > 1 ? "s" : ""}`;
-  if (diffHrs > 0)
-    return `Next: ${diffHrs}h ${diffMin % 60}m`;
-  if (diffMin > 0)
-    return `Next: ${diffMin}m`;
+  if (diffDays > 0) return `Next: ${diffDays} day${diffDays > 1 ? "s" : ""}`;
+  if (diffHrs > 0) return `Next: ${diffHrs}h ${diffMin % 60}m`;
+  if (diffMin > 0) return `Next: ${diffMin}m`;
 
   return `Next: ${diffSec}s`;
 }
@@ -107,10 +92,7 @@ export function formatCountdown(
    (used for timers / background checks)
    ========================================================= */
 
-export function intervalToMs(
-  interval: number,
-  unit: RepeatUnit,
-): number {
+export function intervalToMs(interval: number, unit: RepeatUnit): number {
   switch (unit) {
     case "minutes":
       return interval * 60 * 1000;
@@ -132,16 +114,12 @@ export function calculateAccuracy(
 ): number {
   if (totalOpportunities <= 0) return 0;
 
-  return Math.round(
-    (totalCompletions / totalOpportunities) * 100,
-  );
+  return Math.round((totalCompletions / totalOpportunities) * 100);
 }
 
 // ---------- Stats helpers (UI-safe, derived only) ----------
 
-export function getTotalCompleted(stats: {
-  totalCompletions: number;
-}): number {
+export function getTotalCompleted(stats: { totalCompletions: number }): number {
   return stats.totalCompletions ?? 0;
 }
 
@@ -151,11 +129,8 @@ export function calculateAccuracyFromStats(stats: {
 }): number {
   if (!stats.totalOpportunities) return 0;
 
-  return Math.round(
-    (stats.totalCompletions / stats.totalOpportunities) * 100,
-  );
+  return Math.round((stats.totalCompletions / stats.totalOpportunities) * 100);
 }
-
 
 // ---------- Completion guard ----------
 export function canCompleteHabit(habit: {
@@ -172,19 +147,18 @@ export function canCompleteHabit(habit: {
   return habit.lastCompletedAt < habit.lastNotifiedAt;
 }
 
-
-export function Metrics( habits:any, stats:any){
-   const metrics = useMemo(() => {
+export function Metrics(habits: any, stats: any) {
+  const metrics = useMemo(() => {
     // only active (not mastered) habits count toward accuracy
-    const activeHabits = habits.filter((h:any) => !h.isMastered);
+    const activeHabits = habits.filter((h: any) => !h.isMastered);
 
     const totalOpportunities = activeHabits.reduce(
-      (sum:any, h:any) => sum + (h.notificationCount ?? 0),
+      (sum: any, h: any) => sum + (h.notificationCount ?? 0),
       0,
     );
 
     const totalCompleted = activeHabits.reduce(
-      (sum:any, h:any) => sum + (h.completedCount ?? h.completedDates.length),
+      (sum: any, h: any) => sum + (h.completedCount ?? h.completedDates.length),
       0,
     );
 

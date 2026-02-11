@@ -1,30 +1,32 @@
 import { useThemePrimary } from "@/hooks/useThemePrimary";
-import { RepeatUnit } from "@/models/habit";
 import { Pressable, Text, View } from "react-native";
 
-const UNITS: { label: string; value: RepeatUnit }[] = [
-  { label: "Minutes", value: "minutes" },
-  { label: "Hourly", value: "hourly" },
-  { label: "Daily", value: "daily" },
+export type HabitCategory = "health" | "study" | "fitness";
+
+const CATEGORIES: { label: string; value: HabitCategory }[] = [
+  { label: "Health", value: "health" },
+  { label: "Study", value: "study" },
+  { label: "Fitness", value: "fitness" },
 ];
 
 export function UnitSelector({
   value,
   onChange,
 }: {
-  value: RepeatUnit;
-  onChange: (v: RepeatUnit) => void;
+  value: HabitCategory;
+  onChange: (v: HabitCategory) => void;
 }) {
   const primary = useThemePrimary();
+
   return (
     <View style={{ flexDirection: "row", gap: 8 }}>
-      {UNITS.map((u) => {
-        const active = value === u.value;
+      {CATEGORIES.map((c) => {
+        const active = value === c.value;
 
         return (
           <Pressable
-            key={u.value}
-            onPress={() => onChange(u.value)}
+            key={c.value}
+            onPress={() => onChange(c.value)}
             style={{
               paddingVertical: 8,
               paddingHorizontal: 14,
@@ -32,7 +34,9 @@ export function UnitSelector({
               backgroundColor: active ? primary : "#e0e0e0",
             }}
           >
-            <Text style={{ color: active ? "#fff" : "#000" }}>{u.label}</Text>
+            <Text style={{ color: active ? "#fff" : "#000" }}>
+              {c.label}
+            </Text>
           </Pressable>
         );
       })}

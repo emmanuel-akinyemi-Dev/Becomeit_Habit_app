@@ -22,6 +22,7 @@
     "@tamagui/helpers": "1.144.1",
     "@tamagui/react-native-media-driver": "1.144.1",
     "@tamagui/themes": "1.144.1",
+    "@types/uuid": "^11.0.0",
     "expo": "~54.0.31",
     "expo-av": "^16.0.8",
     "expo-constants": "~18.0.13",

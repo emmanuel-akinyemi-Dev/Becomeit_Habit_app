@@ -1,28 +1,24 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { requestPermissions } from "@/services/notificationService";
+import { useHabitStore } from "@/store/habitStore";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { Stack } from "expo-router";
 import { useEffect } from "react";
-import { useColorScheme } from 'react-native';
-import { TamaguiProvider } from 'tamagui';
-import  config  from '../tamagui.config';
-import NotificationProvider from '../providers/notificationProvider'; // <---
-// app/_layout.tsx
-import { useNotificationPermissions } from '@/notifications';
-import { useNotificationSoundBridge } from "@/notifications/useNotificationSoundBridge";
-import { registerHabitNotificationListener } from '@/notifications';
+import { useColorScheme } from "react-native";
+import { TamaguiProvider } from "tamagui";
+import NotificationProvider from "../providers/notificationProvider"; // <---
+import config from "../tamagui.config";
 
-
-  
 export default function RootLayout() {
+  const regenerate = useHabitStore((s) => s.regenerate);
   const colorScheme = useColorScheme();
-    useNotificationPermissions();
-  useNotificationSoundBridge();
   useEffect(() => {
-    registerHabitNotificationListener();
+    requestPermissions();
+    regenerate();
   }, []);
 
   return (
-    <TamaguiProvider config={config} defaultTheme={colorScheme!} >
-      <NotificationProvider> 
+    <TamaguiProvider config={config} defaultTheme={colorScheme!}>
+      <NotificationProvider>
         <ThemeProvider value={DefaultTheme}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

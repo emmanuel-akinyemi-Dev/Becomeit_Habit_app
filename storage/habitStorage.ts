@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Habit } from "../models/habit";
+import { Habit } from "../types/habit";
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -120,8 +120,9 @@ export async function addHabit(
     notificationCount: 0,
     completedCount: 0,
     createdAt: Date.now(),
-    pendingCompletions:0,
+    pendingCompletions: 0,
     completedDates: [],
+    lastNotificationId: undefined,
   };
 
   const updated = [...habits, newHabit];
@@ -161,12 +162,11 @@ export async function clearHabits() {
   await AsyncStorage.removeItem(HABIT_KEY);
 }
 
-
 // ---------- completion ----------
 
 export async function markHabitCompleted(id: string) {
   const habits = await getHabits();
-  const index = habits.findIndex(h => h.id === id);
+  const index = habits.findIndex((h) => h.id === id);
   if (index === -1) return habits;
 
   const habit = habits[index];
